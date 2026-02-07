@@ -1,0 +1,61 @@
+{
+    "name": "EventifyTeamLauncher",
+    "productname": "Eventify Team",
+    "version": "1.0.6",
+    "sub_version": "",
+    "changelog": "Arreglado el inicio de sesión.",
+    "description": "Launcher de minecraft para los servidores de Eventify Team",
+    "main": "src/app.js",
+    "author": {
+        "name": "Miguelki",
+        "email": "admin@miguelkinetwork.fun",
+        "url": "https://github.com/miguelkix30"
+    },
+    "url": "http://eventify.miguelkiwebservices.com/",
+    "azuriom_url": "https://minecraft.miguelkinetwork.info/",
+    "discord_url": "https://discord.gg/DYxHEtKERe",
+    "discord_client_id": "1447931538380423250",
+    "scripts": {
+        "start": "cross-env-shell NODE_ENV=dev electron .",
+        "dev": "cross-env-shell DEV_TOOL=open nodemon --exec npm start",
+        "build": "node build.js --obf=true --build=platform",
+        "icon": "node build.js --icon=https://github.com/EventifyTeamDev/EventifyTeamLauncher/master/src/assets/images/icon.png"
+    },
+    "license": "CCANC",
+    "nodemonConfig": {
+        "ext": "js,html,css",
+        "ignore": "**/test"
+    },
+    "dependencies": {
+        "adm-zip": "^0.5.10",
+        "axios": "^0.27.2",
+        "azuriom-auth": "^1.0.1",
+        "detect-gpu": "^5.0.70",
+        "discord-rpc": "^4.0.1",
+        "discord-webhook-node": "^1.0.0",
+        "electron-updater": "^6.1.8",
+        "express": "^4.19.2",
+        "html2canvas": "^1.4.1",
+        "marked": "^14.1.2",
+        "miguelkinetworkmclauncher-core": "^1.0.3",
+        "msmc": "^5.0.5",
+        "node-fetch": "^2.7.0",
+        "node-machine-id": "^1.0.0",
+        "systeminformation": "^5.25.11",
+        "tomate-loaders": "^2.0.2",
+        "xml-js": "^1.6.11"
+    },
+    "devDependencies": {
+        "cross-env": "^7.0.3",
+        "electron": "^36.5.0",
+        "electron-builder": "^26.0.12",
+        "javascript-obfuscator": "^4.1.0",
+        "jimp": "^0.22.12",
+        "nodemon": "^3.1.2",
+        "png2icons": "^2.0.1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/EventifyTeamDev/EventifyTeamLauncher.git"
+    }
+}

@@ -1,0 +1,1598 @@
+.settings .container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+.settings-header {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 120px; /* Reducida la altura */
+    padding-top: 1.5rem;
+}
+
+.settings-title {
+    font-size: 2rem;
+    color: var(--color);
+    margin: 0;
+    text-align: center;
+}
+
+.nav-settings {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.nav-box {
+    display: flex;
+    width: 90%;
+}
+
+.nav-settings-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 0.3rem; /* Reducido el margen */
+    cursor: pointer;
+    color: white; /* Changed from var(--icon-unselected) to white */
+    flex: 1;
+    padding: 0.6rem 1rem 0.8rem; /* Aumentado el padding inferior */
+    font-size: 1.1rem; /* Aumentado tamaño de fuente */
+    transition: all 0.2s;
+    border-radius: 5px;
+}
+
+.nav-settings-btn:hover {
+    background-color: var(--box-button-hover);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0px 6px 15px rgba(from var(--box-button) r g b / 0.5);
+}
+
+.nav-settings-btn:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: 0px 2px 5px rgba(from var(--box-button) r g b / 0.3);
+}
+
+.active-settings-BTN {
+    color: var(--color);
+    background: linear-gradient(var(--box-button), var(--box-button-hover));
+}
+
+/* Hacer que el botón VOLVER siempre tenga el fondo azul */
+#save {
+    background: linear-gradient(var(--box-button), var(--box-button-hover));
+    color: white !important;
+    opacity: 1 !important;
+}
+
+#save:disabled {
+    opacity: 0.8 !important;
+    cursor: not-allowed;
+}
+
+.settings-content {
+    position: relative;
+    width: 100%;
+    height: calc(100% - 150px);
+    overflow: hidden;
+    padding: 1rem 0;
+}
+
+.container-settings {
+    position: absolute;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(100%);
+    transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+    overflow-x: hidden;
+}
+
+.active-container-settings {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+}
+
+.settings-column {
+    width: 45%;
+    height: 100%;
+    padding: 0 1rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.settings-full-column {
+    width: 90%;
+    height: 100%;
+    padding: 0 1rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.settings-column::-webkit-scrollbar,
+.settings-full-column::-webkit-scrollbar {
+    width: 8px;
+}
+
+.settings-column::-webkit-scrollbar-track,
+.settings-full-column::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.settings-column::-webkit-scrollbar-thumb,
+.settings-full-column::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+}
+
+.settings-elements-box {
+    width: 100%;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    background-color: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+    transition: all 0.2s;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(15.5px);
+    -webkit-backdrop-filter: blur(15.5px);
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+/* Permitir que el dropdown de idioma sobresalga */
+.settings-elements-box:has(.dropdown-language-select) {
+    overflow: visible;
+}
+
+.settings-elements {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    margin: 1rem 0;
+    overflow-x: hidden; /* Prevenir scroll horizontal */
+}
+
+/* Asegurar que los elementos deshabilitados mantengan su color de texto */
+input:disabled, 
+button:disabled,
+select:disabled,
+textarea:disabled,
+.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    color: inherit !important; /* Mantener el color del texto */
+}
+
+button:disabled {
+    color: #ddd !important; /* Color gris oscuro para texto en botones deshabilitados */
+}
+
+input:disabled::placeholder {
+    color: rgba(221, 221, 221, 0.7) !important; /* Color gris oscuro para placeholders */
+}
+
+.setting-text {
+    font-size: 1rem;
+}
+
+.content-center {
+    justify-content: center;
+}
+
+.content-evenly {
+    justify-content: space-evenly;
+}
+
+.content-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/*******************************************************************************
+ *                                                                             *
+ * account tab                                                                 *
+ *                                                                             *
+ ******************************************************************************/
+.accounts-list {
+    max-height: 90%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: flex-start;
+}
+
+.account {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    width: calc(400px - 8px);
+    height: calc(100px - 8px);
+    margin: 1rem;
+    background-color: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+    transition: all 0.3s ease; /* Cambio: transición más suave */
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(80px);
+    -webkit-backdrop-filter: blur(80px);
+    position: relative; /* Añadido: para posicionar el pseudo-elemento */
+    overflow: hidden; /* Añadido: para contener efectos dentro del cuadro */
+    cursor: pointer; /* Added to improve UX */
+}
+
+/* Añadido: Efecto de hover para las cuentas */
+.account:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 15px rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Añadido: Efecto especial para el cuadro de añadir cuenta */
+.account#add {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.15);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.account#add:hover {
+    transform: translateY(-3px) scale(1.02);
+    border: 2px dashed rgba(255, 255, 255, 0.6);
+    background: rgba(0, 0, 0, 0.25);
+    box-shadow: 0 8px 15px rgba(255, 255, 255, 0.2);
+}
+
+.account#add:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.add-profile {
+    width: 70px;
+    height: 70px;
+    font-size: 3rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+.icon-account-add {
+    font-size: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.icon-account-add:before {
+    content: "+";
+    font-size: 3.5rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.add-text-profile {
+    font-size: 1.5rem;
+    pointer-events: none;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Añadido: Efecto de brillo en hover */
+.account::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+    transform: scale(0);
+    opacity: 0;
+    transition: transform 0.5s, opacity 0.5s;
+}
+
+.account:hover::before {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.account-select {
+    border: solid 4px #fff;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.4);
+}
+
+/* Añadido: Efecto para la cuenta seleccionada al hacer hover */
+.account-select:hover {
+    border: solid 4px var(--color);
+}
+
+/* Efecto especial para el botón de eliminar */
+.delete-profile:hover {
+    background: rgba(255, 0, 0, 0.2);
+    color: #ff0000;
+    transition: all 0.3s ease;
+}
+
+.profile-image {
+    width: 70px;
+    height: 70px;
+    background: url(../../images/default/steve.png);
+    background-size: cover;
+    border-radius: 15px;
+    pointer-events: none;
+    image-rendering: pixelated;
+}
+
+.profile-infos {
+    text-align: center;
+    width: 10rem;
+    pointer-events: none;
+
+}
+
+.profile-pseudo {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1.5rem;
+    pointer-events: none;
+
+}
+
+.profile-uuid {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+
+}
+
+.delete-profile {
+    width: 70px;
+    height: 70px;
+    border-radius: 15px;
+    font-size: 3rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #ff2c2c;
+    cursor: pointer;
+    background-color: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+    transition: all 0.2s;
+    background: rgba(0, 0, 0, 0.05);
+    
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(80px);
+    -webkit-backdrop-filter: blur(80px);
+}
+
+.delete-profile-icon {
+    pointer-events: none;
+}
+
+.profile-card {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px; /* Reducido padding */
+    transition: all 0.2s;
+    width: auto;
+    max-width: 400px;
+    margin: 5px 20px; /* Reducido margen vertical */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+.discord-profile-image {
+    width: 45px; /* Reducido tamaño */
+    height: 45px; /* Reducido tamaño */
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 15px; /* Reducido margen */
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-username {
+    font-size: 1.3rem; /* Reducido tamaño de fuente */
+    color: #fff;
+    margin: 0;
+}
+
+.discord-settings {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: auto; /* Cambiado de 100% a auto para reducir altura */
+    padding: 10px 0; /* Añadido padding vertical más pequeño */
+}
+
+.discord-username-text {
+    text-align: center;
+    font-size: 1.3rem; /* Reducido tamaño de fuente */
+    margin-bottom: 5px; /* Añadido pequeño margen inferior */
+}
+
+.discord-logout-warning {
+    color: #ff2c2c;
+    text-align: center;
+    font-size: 0.9rem; /* Reducido tamaño de fuente */
+    margin: 5px 0; /* Reducido margen */
+}
+
+.discord-logout-btn {
+    align-items: center;
+    padding-top: 0.2rem; /* Reducido padding */
+    font-size: 1.1rem; /* Reducido tamaño de fuente */
+    width: 10rem; /* Reducido ancho */
+    height: 2.2rem; /* Reducido altura */
+    text-align: center;
+    background-color: var(--box-button);
+    box-shadow: 0px 3px 6px #00000029;
+    border-radius: 25px;
+    color: #fff;
+    cursor: pointer;
+    z-index: 2;
+    margin-top: 8px; /* Añadido un margen superior pequeño */
+    display: flex;
+    justify-content: center;
+}
+
+/* Mantener el hover sin cambios */
+.discord-logout-btn:hover {
+    background-color: var(--box-button-hover);
+}
+
+/*******************************************************************************
+ *                                                                             *
+ * java tab                                                                    *
+ *                                                                             *
+ ******************************************************************************/
+
+.memory-slider {
+  position: relative;
+  margin: 30px 0;
+  height: 18px;
+  width: 100%;
+  user-select: none;
+}
+
+.slider-touch-left,
+.slider-touch-right {
+  box-sizing: border-box;
+  display: block;
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  z-index: 2;
+}
+
+.slider-touch-left span,
+.slider-touch-right span {
+  display: block;
+  width: 20px;
+  height: 20px;
+  background: #bbb;
+  border: 4px solid var(--color); /* Usar la variable de color en lugar de blanco */
+  transition: background-color .2s, border .2s;
+  border-radius: 18px;
+  cursor: pointer;
+}
+
+.slider-touch-left span:hover,
+.slider-touch-right span:hover {
+  background-color: #ddd;
+}
+
+.slider-touch-left span:active,
+.slider-touch-right span:active {
+  background-color: var(--color);
+  border-color: white;
+}
+
+.slider-touch-left span:after,
+.slider-touch-right span:after {
+  content: attr(value);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  pointer-events: none;
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translate(-50%);
+}
+
+.slider-line {
+  box-sizing: border-box;
+  position: absolute;
+  width: calc(100% - 18px);
+  left: 9px;
+  top: 9px;
+  height: 4px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.3);
+  z-index: 0;
+  overflow: hidden;
+}
+
+.slider-line span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--color);
+}
+
+.ram-info-block {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1rem;
+  color: white;
+  margin-top: 10px;
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#total-ram, #free-ram {
+  font-weight: bold;
+  color: var(--color);
+}
+
+.java-path-input-text {
+    background: var(--shadow);
+    border: none;
+    color: var(--color);
+    padding: 0.5rem 1rem;
+    border-radius: 15px;
+    max-width: 90%;
+    margin-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.java-path-input-file {
+    display: none;
+}
+
+.java-path-box {
+    display: flex;
+    align-items: center;
+}
+
+/* Mejoras para botones */
+.java-path-btn, .size-btn {
+    padding: 0.5rem 1.2rem;
+    background: linear-gradient(135deg, var(--box-button) 0%, var(--box-button-hover) 100%);
+    border-radius: 15px;
+    margin: 0 0.8rem;
+    cursor: pointer;
+    color: white;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.java-path-btn::before, .size-btn::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
+    transform: scale(0);
+    opacity: 0;
+    transition: transform 0.5s, opacity 0.5s;
+    pointer-events: none;
+}
+
+.java-path-btn:hover, .size-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.java-path-btn:hover::before, .size-btn:hover::before {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.java-path-btn:active, .size-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.2);
+}
+
+/*******************************************************************************
+ *                                                                             *
+ * resolution tab                                                              *
+ *                                                                             *
+ ******************************************************************************/
+.input-size-element {
+    display: flex;
+    align-items: center;
+}
+
+/* Mejoras para campos numéricos */
+.input-resolution {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: white;
+    padding: 0.6rem 1rem;
+    border-radius: 15px;
+    text-align: center;
+    font-weight: 500;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.input-resolution {
+    width: 6rem;
+}
+
+.input-resolution:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.input-resolution:focus {
+    outline: none;
+    border-color: var(--box-button);
+    box-shadow: 0 0 8px rgba(0, 120, 189, 0.5);
+}
+
+.size-cross {
+    margin: 0 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    text-align: center;
+}
+
+.size-cross:before {
+    font: normal normal bold 20px Icons;
+    content: "\e90e";
+    display: block;
+}
+
+/*******************************************************************************
+ *                                                                             *
+ * Launcher tab                                                                *
+ *                                                                             *
+ ******************************************************************************/
+
+/* Mejoras para los botones de gestión de datos */
+.data-management-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 20px;
+    font-size: 1rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 12px;
+    width: 250px;
+    text-align: center;
+    font-weight: bold;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.data-management-btn::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
+    transform: scale(0);
+    opacity: 0;
+    transition: transform 0.5s, opacity 0.5s;
+    pointer-events: none;
+}
+
+.reset-config-btn {
+    background: linear-gradient(135deg, #0078bd 0%, #053e8a 100%);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.reset-config-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 120, 189, 0.5);
+}
+
+.reset-config-btn:hover::before {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.reset-config-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.delete-assets-btn {
+    background: linear-gradient(135deg, #2fd381 0%, #1cb795 100%);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.delete-assets-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(2, 97, 76, 0.4);
+}
+
+.delete-assets-btn:hover::before {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.delete-assets-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.delete-all-btn {
+    background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.delete-all-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(255, 0, 0, 0.4);
+}
+
+.delete-all-btn:hover::before {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.delete-all-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.open-console-btn {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.open-console-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(255, 152, 0, 0.4);
+}
+
+.open-console-btn:hover::before {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.open-console-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.open-logs-folder-btn {
+    background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.open-logs-folder-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(156, 39, 176, 0.4);
+}
+
+.open-logs-folder-btn:hover::before {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.open-logs-folder-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.launcher-behavior-box {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 15px;
+  margin: 15px 0;
+}
+
+/* Mejoras para la opción de comportamiento del launcher */
+.launcher-behavior-option {
+    display: flex;
+    align-items: center;
+    margin: 5px;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.launcher-behavior-option::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+    transform: scale(0);
+    opacity: 0;
+    transition: transform 0.5s, opacity 0.5s;
+    pointer-events: none;
+}
+
+.launcher-behavior-option:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.launcher-behavior-option:hover::before {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.launcher-behavior-option:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.launcher-behavior-option.selected {
+    background-color: rgba(from var(--box-button-hover) r g b / 0.75);
+    box-shadow: 0 0 10px rgba(from var(--color) r g b / 0.3);
+}
+
+.launcher-behavior-radio {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  margin-right: 15px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.launcher-behavior-option.selected .launcher-behavior-radio {
+  border-color: var(--color);
+}
+
+.launcher-behavior-option.selected .launcher-behavior-radio:after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--color);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+}
+
+.launcher-behavior-label {
+  font-size: 1rem;
+  color: white;
+}
+
+.close-box {
+  display: none;
+}
+
+/*******************************************************************************
+ *                                                                             *
+ * Credits tab                                                                 *
+ *                                                                             *
+ ******************************************************************************/
+
+.credits-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2.5em; /* Reducido el espacio entre tarjetas */
+    padding: 0.5em; /* Reducido el padding */
+}
+
+.credit {
+    flex-basis: 16em; /* Reducido el ancho base */
+    max-width: 16em; /* Reducido el ancho máximo */
+    flex-grow: 0;
+    flex-shrink: 1;
+    text-align: center;
+    padding: 10px; /* Reducido el padding */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(5px);
+    margin-bottom: 1em; /* Añadido un margen inferior más pequeño */
+}
+  
+.credit img {
+    width: 80px; /* Reducido el tamaño de la imagen */
+    height: 80px; /* Reducido el tamaño de la imagen */
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 8px; /* Reducido el margen inferior */
+}
+  
+.credit h3 {
+    margin: 6px 0; /* Reducido el margen */
+    font-size: 20px; /* Reducido el tamaño de fuente */
+}
+  
+.social-icons {
+    display: flex;
+    justify-content: center;
+    gap: 8px; /* Reducido el espacio entre iconos */
+    margin-top: 5px; /* Añadido un pequeño margen superior */
+}
+  
+.social-icons a {
+    font-size: 24px; /* Reducido el tamaño de fuente */
+    color: #fff;
+}
+
+.role {
+    font-size: 0.85em; /* Reducido el tamaño de fuente */
+    margin: 3px 0; /* Añadido un margen reducido */
+}
+
+/* Terminos y condiciones */
+
+.info-container {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+  background-color: #f8f9fabe;
+  border-radius: 5px;
+  padding: 10px;
+  color: black;
+  user-select: text;
+  width: 90%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.info-panel {
+  padding: 20px;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  opacity: 0;
+  animation: fadeIn 0.3s forwards;
+  max-width: 90%;
+  margin: auto;
+  box-sizing: border-box;
+}
+
+.info-container p strong {
+    color: #333;
+    font-weight: bold;
+}
+
+.info-container p {
+    margin-bottom: 15px;
+    font-size: 14px;
+    color: #555;
+}
+
+.data-management-btn i {
+  margin-right: 8px;
+  font-size: 1.1rem;
+}
+
+body.performance-mode .data-management-btn {
+  transition: none !important;
+}
+
+.titre-tab {
+    font-size: 1.5rem;
+    margin: 1rem 0;
+    margin-bottom: 0.5rem;
+    padding: 0.7rem 1.2rem;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    color: #fff;
+    font-weight: 500;
+    width: calc(100% - 2.4rem); /* Ajustado para el padding horizontal */
+    box-sizing: border-box;
+}
+
+.active-step {
+    background-color: rgba(from var(--box-button) r g b / 0.582);
+}
+
+/* Estilos para la gestión automática de Java */
+.java-info-container {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.java-info-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #4CAF50;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.java-info-description {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+.java-installations-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #2196F3;
+    margin: 1rem 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.java-installations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.java-installation-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.8rem;
+    transition: all 0.2s ease;
+}
+
+.java-installation-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateX(4px);
+}
+
+.java-installation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.3rem;
+}
+
+.java-version {
+    font-weight: bold;
+    color: #4CAF50;
+    font-size: 1rem;
+}
+
+.java-size {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
+.java-installation-path {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Courier New', monospace;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.3rem;
+    border-radius: 4px;
+    margin-bottom: 0.3rem;
+    word-break: break-all;
+}
+
+.java-installation-compatibility {
+    font-size: 0.8rem;
+    color: #FF9800;
+    font-style: italic;
+}
+
+.java-installations-empty {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+.java-management-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.java-cleanup-btn,
+.java-refresh-btn {
+    background: linear-gradient(135deg, #FF5722, #FF7043);
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.java-refresh-btn {
+    background: linear-gradient(135deg, #2196F3, #42A5F5);
+}
+
+.java-cleanup-btn:hover {
+    background: linear-gradient(135deg, #E64A19, #FF5722);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
+}
+
+.java-refresh-btn:hover {
+    background: linear-gradient(135deg, #1976D2, #2196F3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.java-cleanup-btn:active,
+.java-refresh-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Estilos adicionales para diagnóstico de Java */
+    .java-management-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .java-cleanup-btn, .java-refresh-btn, .java-debug-btn {
+        padding: 8px 15px;
+        border: none;
+        border-radius: 5px;
+        background: var(--box-button);
+        color: white;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    
+    .java-cleanup-btn:hover, .java-refresh-btn:hover, .java-debug-btn:hover {
+        background: var(--box-button-hover);
+        transform: translateY(-1px);
+    }
+    
+    .java-diagnostic-container {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 15px;
+        text-align: left;
+    }
+    
+    .diagnostic-section {
+        margin-bottom: 20px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 5px;
+    }
+    
+    .diagnostic-section h4 {
+        margin: 0 0 10px 0;
+        color: var(--text-color);
+    }
+    
+    .diagnostic-java-dir {
+        margin: 10px 0;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 3px;
+        border-left: 3px solid var(--box-button);
+    }
+    
+    .diagnostic-java-dir ul {
+        margin: 5px 0 0 0;
+        padding-left: 20px;
+        list-style-type: disc;
+    }
+    
+    .diagnostic-java-dir li {
+        margin: 2px 0;
+        font-size: 12px;
+        color: #ccc;
+    }
+
+/* Language selection styles */
+.language-selection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    position: relative; /* Agregar posición relativa */
+    z-index: 50; /* Agregar z-index */
+}
+
+.language-selection label {
+    font-size: 0.9rem;
+    color: var(--color);
+    margin-bottom: 0.5rem;
+}
+
+/* Selector de idioma estilo botón */
+.language-selection {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+}
+
+.language-select-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--box-button) 0%, var(--box-button-hover) 100%);
+    color: white;
+    margin: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 12px;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    cursor: pointer;
+    font-size: 16px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.language-select-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.language-select-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 5px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.language-select-btn:hover::before {
+    left: 100%;
+}
+
+.language-select-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.language-btn-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    justify-content: center;
+    min-height: 28px;
+}
+
+.flag-icon {
+    width: 40px;
+    height: 30px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.flag-icon img {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 6px !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
+    box-shadow: none !important;
+}
+
+.language-text {
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* Popup de selección de idiomas */
+.language-popup {
+    position: absolute;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background-color: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+    transition: all 0.5s;
+    background: rgba( 0, 0, 0, 0.05 );
+    backdrop-filter: blur( 5px );
+    -webkit-backdrop-filter: blur( 5px );
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.language-popup.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.language-selection-tab {
+    position: relative;
+    border-radius: 10px;
+    padding: 1rem 3rem;
+    transition: all 0.5s;
+    background-color: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+    transition: all 0.2s;
+    background: rgba(0, 0, 0, 0.9);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    max-height: 90vh;
+    width: 80%;
+    overflow: hidden;
+}
+
+.languages-grid-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 30rem;
+    padding-right: 8px; 
+    scrollbar-width: thin; 
+    scrollbar-color: white transparent;
+    position: relative;
+}
+
+.languages-grid-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.languages-grid-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.languages-grid-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+}
+
+.languages-grid-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.languages-grid-container::-webkit-scrollbar-button {
+    display: none;
+}
+
+.languages-grid-container::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+.languages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    justify-content: center;
+    width: 100%;
+    margin: 0 auto;
+    place-items: center;
+}
+
+@media (max-width: 850px) {
+    .languages-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+}
+
+@media (min-width: 850px) {
+    .languages-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+}
+
+.language-element {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    width: 280px;
+    height: 80px;
+    position: relative;
+}
+
+.language-element:hover {
+    background: rgba(from var(--box-button) r g b / 0.2);
+    border: 1px solid rgba(from var(--box-button) r g b / 0.3);
+}
+
+.language-element.active-language {
+    background: rgba(from var(--box-button) r g b / 0.4);
+    border: 1px solid rgba(from var(--box-button) r g b / 0.3);
+}
+
+.language-element-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    justify-content: center;
+}
+
+.language-element .flag-icon {
+    width: 48px;
+    height: 36px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.language-element .language-text {
+    font-size: 16px;
+    color: #fff;
+    text-align: center;
+    font-weight: 500;
+}
+
+.language-selection-tab p {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: #fff;
+}
+
+/* Estilos específicos para el emoji de idioma automático */
+.language-element .auto-language-icon {
+    width: 48px !important;
+    height: 36px !important;
+    font-size: 28px !important;
+    border-radius: 6px !important;
+    background: linear-gradient(135deg, #4CAF50 0%, #2196F3 100%) !important;
+    color: white !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+    overflow: visible !important;
+    text-align: center !important;
+    line-height: 1 !important;
+}
+
+.auto-language-icon:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Mejorar la visibilidad del dropdown cuando está abierto */
+.dropdown-language-select.open .dropdown-language-options {
+    max-height: 350px !important;
+    opacity: 1 !important;
+    overflow-y: auto !important;
+    transform: translateY(0) !important;
+    pointer-events: all !important;
+}
+
+/* Asegurar que el dropdown sea visible por encima de otros elementos */
+.dropdown-language-select {
+    position: relative !important;
+    z-index: 9999 !important;
+}
+
+.dropdown-language-options {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 10000 !important;
+    pointer-events: none;
+}
+
+.dropdown-language-select.open .dropdown-language-options {
+    pointer-events: all !important;
+}
+
+.language-selection {
+    overflow: visible !important;
+}

@@ -1,0 +1,176 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="Content-Security-Policy" content="script-src 'self';">
+        <link rel="stylesheet" href="assets/css/launcher.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    </head>
+    <body>
+        <div class="dragbar"></div>
+        <div class="darwin">
+            <div class="frame">
+                <div id="close" class="button-frame darwin-icon-close"></div>
+                <!-- <div id="maximize" class="button-frame darwin-icon-maximize"></div> -->
+                <div id="minimize" class="button-frame darwin-icon-minimize"></div>
+            </div>
+        </div>
+        <div class="other">
+            <div class="frame">
+                <div id="minimize" class="button-frame icon-minimize"></div>
+                <!-- <div id="maximize" class="button-frame icon-maximize"></div> -->
+                <div id="close" class="button-frame icon-close"></div>
+            </div>
+        </div>
+
+        <!-- Fondos de video -->
+        <video autoplay muted loop class="background-video current">
+            <source src="" type="video/mp4">
+        </video>
+        <video autoplay muted loop class="background-video next">
+            <source src="" type="video/mp4">
+        </video>
+
+        <div class="loading-overlay">
+            <div class="spinner">
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+              </div>
+            <div class="loading-text" data-translate="launcher.starting">Iniciando Launcher...</div>
+
+        </div>
+      <div class="terms-modal" style="display:none;">
+        <div class="terms-header">
+            <h2 data-translate="terms.title">Bienvenido a Miguelki Network MC Launcher</h2>
+            <p class="terms-message" data-translate="terms.content">Antes de continuar, acepta los términos y condiciones para poder utilizar el software. De lo contrario, el launcher se cerrará y no podrás utilizarlo hasta que los aceptes.</p>
+        </div>
+        <div class="terms-container"></div>
+        <div class="terms-buttons">
+            <div class="tooltip-container">
+                <button class="accept-terms-btn" disabled data-translate="buttons.accept">Aceptar</button>
+                <span class="tooltip-text" data-translate="terms.read_all">Lee todos los términos antes de aceptar</span>
+            </div>
+            <button class="decline-terms-btn" data-translate="terms.reject">Rechazar y cerrar launcher</button>
+        </div>
+    </div>
+    </div>
+    
+        <div class="popup">
+            <div class="popup-tab">
+                <div class="popup-title"></div>
+                <div class="popup-content"></div>
+                <div class="popup-options">
+                    <button id="okButton" class="popup-button">OK</button>
+                    <button id="acceptButton" class="popup-button">Continuar</button>
+                    <button id="cancelButton" class="popup-button">Cancelar</button>
+                </div>
+            </div>
+        </div>
+        <div class="panels"></div>
+        <script src="assets/js/launcher.js" type="module"></script>
+        <script src="assets/js/utils/skinview3d.bundle.min.js"></script>
+        <!-- Initial Setup Modal -->
+        <div class="setup-modal" style="display:none;">
+          <div class="setup-container">
+            <div class="setup-header">
+              <h2 data-translate="setup.welcome_title">Configuración Inicial de Miguelki Network MC Launcher</h2>
+              <p data-translate="setup.welcome_message">Bienvenido! Vamos a configurar algunos parámetros para optimizar tu experiencia.</p>
+              <div class="setup-step-indicator">
+                <span class="step active-step" data-step="0">🌐</span>
+                <span class="step-line"></span>
+                <span class="step" data-step="1">1</span>
+                <span class="step-line"></span>
+                <span class="step" data-step="2">2</span>
+                <span class="step-line"></span>
+                <span class="step" data-step="3">3</span>
+              </div>
+            </div>
+            
+            <div class="setup-content">
+              <!-- Language Selection (Step 0) -->
+              <div class="setup-section active" id="setup-step-0">
+                <h3 data-translate="setup.step_0">Selección de Idioma</h3>
+                <p data-translate="setup.language_info">Selecciona tu idioma preferido. Esta configuración se puede cambiar más tarde en los ajustes del launcher.</p>
+                <div class="setup-language-selector">
+                  <div class="setup-language-options">
+                    <!-- Las opciones se llenarán dinámicamente -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Performance Mode (Step 1) -->
+              <div class="setup-section next" id="setup-step-1">
+                <h3 data-translate="setup.step_1">Modo de Rendimiento</h3>
+                <p data-translate="setup.performance_info">Activa esta opción para mejorar el rendimiento en equipos con recursos limitados.</p>
+                <div class="setup-checkbox-container">
+                  <input type="checkbox" id="setup-performance-mode" class="setup-checkbox">
+                  <label for="setup-performance-mode" data-translate="setup.enable_performance_mode">Activar modo de rendimiento</label>
+                </div>
+                <p class="setup-note" data-translate="setup.performance_note">
+                  Esta opción desactiva los fondos de video animados y las transiciones visuales para reducir el consumo de recursos.
+                </p>
+              </div>
+
+              <!-- RAM Configuration (Step 2) -->
+              <div class="setup-section next" id="setup-step-2">
+                <h3 data-translate="setup.step_2">Configuración de Memoria RAM</h3>
+                <p><span data-translate="setup.total_ram">RAM Total:</span><span id="setup-total-ram">8 GB</span></p>
+                
+                <div class="setup-ram-config">
+                  <div class="setup-ram-slider-container">
+                    <div class="setup-memory-slider" min="0.5" max="8" step="0.5">
+                      <div class="setup-slider-touch-left">
+                        <span value="0.5 GB"></span>
+                      </div>
+                      <div class="setup-slider-touch-right">
+                        <span value="4 GB"></span>
+                      </div>
+                      <div class="setup-slider-line">
+                        <span></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="setup-ram-info-block">
+                    <div class="setup-ram-row">
+                      <b data-translate="setup.minimum_ram">RAM Mínima:</b> <span id="setup-ram-min-display">2 GB</span>
+                    </div>
+                    <div class="setup-ram-row">
+                      <b data-translate="setup.maximum_ram">RAM Máxima:</b> <span id="setup-ram-max-display">4 GB</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Launcher Behavior (Step 3) -->
+              <div class="setup-section next" id="setup-step-3">
+                <h3 data-translate="setup.step_3">Comportamiento del Launcher</h3>
+                <p>Selecciona cómo quieres que se comporte el launcher al iniciar el juego:</p>
+                <div class="setup-launcher-behavior-box">
+                  <div class="setup-launcher-behavior-option selected" data-value="close-launcher">
+                    <div class="setup-launcher-behavior-radio"></div>
+                    <div class="setup-launcher-behavior-label" data-translate="setup.close_launcher">Cerrar el launcher después de iniciar el juego (Recomendado)</div>
+                  </div>
+                  <div class="setup-launcher-behavior-option" data-value="close-none">
+                    <div class="setup-launcher-behavior-radio"></div>
+                    <div class="setup-launcher-behavior-label" data-translate="setup.keep_launcher_open">Mantener abierto el launcher</div>
+                  </div>
+                  <div class="setup-launcher-behavior-option" data-value="close-all">
+                    <div class="setup-launcher-behavior-radio"></div>
+                    <div class="setup-launcher-behavior-label" data-translate="setup.close_all">Cerrar el juego al cerrar el launcher</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="setup-buttons">
+              <button class="setup-prev-btn" style="display:none" data-translate="buttons.previous">Anterior</button>
+              <button class="setup-next-btn" data-translate="buttons.next">Siguiente</button>
+              <button class="setup-finish-btn" style="display:none" data-translate="buttons.finish">Finalizar</button>
+            </div>
+          </div>
+        </div>
+    </body>
+</html>
