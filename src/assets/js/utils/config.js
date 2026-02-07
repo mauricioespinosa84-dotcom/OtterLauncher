@@ -11,7 +11,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const hwid = machineIdSync();
-import { getConfig, getLauncherKey } from '../MKLib.js';
+import { getLauncherKey } from '../MKLib.js';
 
 let url = pkg.user ? `${pkg.url}/${pkg.user}` : pkg.url
 let key;
@@ -39,28 +39,118 @@ async function getLocalLauncherKey() {
 let Launcherkey = await getLocalLauncherKey();
 
 class Config {
-    GetConfig() {
-        // Use the new protected function from MKLib.js
-        return getConfig();
+    async GetConfig() {
+        const baseUrl = (pkg.url || '').trim();
+        if (!baseUrl) {
+            return { error: { code: 'CONFIG_URL_MISSING', message: 'pkg.url no está configurado' } };
+        }
+
+        const configUrl = `${baseUrl.replace(/\/$/, '')}/launcher/config.json`;
+
+        try {
+            const response = await nodeFetch(configUrl, {
+                headers: { 'Cache-Control': 'no-cache' }
+            });
+
+            if (!response.ok) {
+                return {
+                    error: {
+                        code: response.status,
+                        message: `Server returned ${response.status}: ${response.statusText}`
+                    }
+                };
+            }
+
+            const responseText = await response.text();
+            if (!responseText || responseText.trim() === '') {
+                return { error: { code: 'EMPTY_RESPONSE', message: 'Empty response from server' } };
+            }
+
+            try {
+                return JSON.parse(responseText);
+            } catch (jsonError) {
+                return { error: { code: 'JSON_PARSE_ERROR', message: jsonError.message } };
+            }
+        } catch (err) {
+            return { error: { code: 'FETCH_ERROR', message: err.message || String(err) } };
+        }
     }
 
     async getInstanceList() {
         try {
+            const normalizeInstance = (instance) => {
+                const normalized = { ...instance };
+
+                // Backward compatibility: accept "loader" and map to expected "loadder"
+                if (!normalized.loadder && normalized.loader) {
+                    normalized.loadder = { ...normalized.loader };
+                }
+                if (normalized.loadder) {
+                    if (normalized.loadder.loader_type && !normalized.loadder.loadder_type) {
+                        normalized.loadder.loadder_type = normalized.loadder.loader_type;
+                    }
+                    if (normalized.loadder.loader_version && !normalized.loadder.loadder_version) {
+                        normalized.loadder.loadder_version = normalized.loadder.loader_version;
+                    }
+                }
+
+                // Ensure status object exists to avoid runtime errors
+                if (!normalized.status || typeof normalized.status !== 'object') {
+                    normalized.status = {
+                        nameServer: normalized.name || 'Servidor',
+                        ip: '',
+                        port: 25565
+                    };
+                }
+
+                return normalized;
+            };
+
+            const parseInstances = (instancesData) => {
+                if (!instancesData) return [];
+                if (Array.isArray(instancesData)) {
+                    return instancesData.map((i) => normalizeInstance(i));
+                }
+                if (typeof instancesData !== 'object') return [];
+                const instancesList = [];
+                for (let [name, data] of Object.entries(instancesData)) {
+                    if (data) {
+                        let instance = { ...data, name };
+                        instancesList.push(normalizeInstance(instance));
+                    }
+                }
+                return instancesList;
+            };
+
+            const fetchJsonSafe = async (targetUrl) => {
+                try {
+                    const response = await nodeFetch(targetUrl, {
+                        headers: { 'User-Agent': 'MiguelkiNetworkMCLauncher' }
+                    });
+                    if (!response.ok) return null;
+                    const text = await response.text();
+                    if (!text || text.trim() === '') return null;
+                    return JSON.parse(text);
+                } catch {
+                    return null;
+                }
+            };
+
             let urlInstance = `${url}/files?checksum=${Launcherkey}&id=${hwid}`;
             let response = await nodeFetch(urlInstance, {
                 headers: {
                     'User-Agent': 'MiguelkiNetworkMCLauncher'
                 }
-            }
-            );
+            });
             
-            // Check if the response is OK
             if (!response.ok) {
+                const fallbackUrl = `${(pkg.url || '').replace(/\/$/, '')}/launcher/instances.json`;
+                const fallbackData = await fetchJsonSafe(fallbackUrl);
+                if (fallbackData) return parseInstances(fallbackData);
                 console.error(`Server returned status: ${response.status} ${response.statusText}`);
                 return [];
             }
             
-            // Verificar que la respuesta tiene contenido antes de parsear
             const responseText = await response.text();
             if (!responseText || responseText.trim() === '') {
                 console.error('Empty response received from server');
@@ -76,24 +166,29 @@ class Config {
                 return [];
             }
             
-            if (!instances || typeof instances !== 'object') {
-                console.error("Invalid instance data received:", instances);
-                return [];
-            }
-            
-            let instancesList = [];
-            instances = Object.entries(instances);
-
-            for (let [name, data] of instances) {
-                if (data) {
-                    let instance = data;
-                    instance.name = name;
-                    instancesList.push(instance);
-                }
-            }
-            return instancesList;
+            return parseInstances(instances);
         } catch (err) {
             console.error("Error fetching instance list:", err);
+            const fallbackUrl = `${(pkg.url || '').replace(/\/$/, '')}/launcher/instances.json`;
+            const fallbackData = await (async () => {
+                try {
+                    const res = await nodeFetch(fallbackUrl, {
+                        headers: { 'User-Agent': 'MiguelkiNetworkMCLauncher' }
+                    });
+                    if (!res.ok) return null;
+                    const text = await res.text();
+                    if (!text || text.trim() === '') return null;
+                    return JSON.parse(text);
+                } catch {
+                    return null;
+                }
+            })();
+            if (fallbackData) {
+                if (Array.isArray(fallbackData)) return fallbackData;
+                if (typeof fallbackData === 'object' && fallbackData) {
+                    return Object.entries(fallbackData).map(([name, data]) => ({ ...data, name }));
+                }
+            }
             return [];
         }
     }

@@ -26,16 +26,29 @@ class Login {
 	async init(config) {
 		this.config = config;
 		this.db = new database();
+		this.dev = process.env.NODE_ENV === "dev";
 
 		console.log("Initializing login system with new authentication modules");
 
 		// Handle login method based on configuration
-		if (typeof this.config.online == "boolean") {
-			this.config.online ? this.getMicrosoft() : this.getCrack();
-		} else if (typeof this.config.online == "string") {
-			if (this.config.online.match(/^(http|https):\/\/[^ "]+$/)) {
+		const onlineValue = this.config?.online;
+		if (typeof onlineValue === "boolean") {
+			onlineValue ? this.getMicrosoft() : this.getCrack();
+		} else if (typeof onlineValue === "string") {
+			const trimmed = onlineValue.trim().toLowerCase();
+			if (trimmed === "true") {
+				this.getMicrosoft();
+			} else if (trimmed === "false") {
+				this.getCrack();
+			} else if (onlineValue.match(/^(http|https):\/\/[^ "]+$/)) {
 				this.getAZauth();
+			} else {
+				console.warn("Configuración 'online' inválida. Usando modo offline por defecto.");
+				this.getCrack();
 			}
+		} else {
+			console.warn("Configuración 'online' faltante. Usando modo offline por defecto.");
+			this.getCrack();
 		}
 
 		// Set up cancel buttons
@@ -618,7 +631,15 @@ class Login {
 			await clickableHead();
 
 			await setUsername(account.name);
-			await loginMSG();
+			if (this.dev) {
+				console.log("Skipping loginMSG in dev mode");
+			} else {
+				try {
+					await loginMSG();
+				} catch (error) {
+					console.warn("loginMSG failed:", error?.message || error);
+				}
+			}
 			changePanel("home");
 
 			return account;

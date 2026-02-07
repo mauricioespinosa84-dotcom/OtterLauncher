@@ -168,9 +168,14 @@ class Home {
 
 	async notification() {
 		let res = await config.GetConfig();
-		let hwid = await getHWID();
-		let check = await checkHWID(hwid);
-		let fetchError = await getFetchError();
+		const notificationConfig = res && typeof res === 'object' && res.notification ? res.notification : { enabled: false };
+		let check = false;
+		let fetchError = false;
+		if (!dev) {
+			let hwid = await getHWID();
+			check = await checkHWID(hwid);
+			fetchError = await getFetchError();
+		}
 
 		let notification = document.querySelector(".message-container");
 		let notificationIcon = document.querySelector(".message-icon");
@@ -216,32 +221,35 @@ class Home {
 				notificationIcon.src = "assets/images/notification/error.png";
 				await this.showNotification();
 			}
-		} else if (res.notification.enabled) {
-			notificationTitle.innerHTML = res.notification.title;
-			notificationContent.innerHTML = res.notification.content;
+		} else if (notificationConfig.enabled) {
+			notificationTitle.innerHTML = notificationConfig.title || '';
+			notificationContent.innerHTML = notificationConfig.content || '';
 			if (notificationContent.innerHTML.length > 160) {
 				notificationContent.style.fontSize = "0.75rem";
 				notificationTitle.style.fontSize = "1.0rem";
 			}
 
-			if (res.notification.color == "red")
+			if (notificationConfig.color == "red")
 				notification.style.background = colorRed;
-			else if (res.notification.color == "green")
+			else if (notificationConfig.color == "green")
 				notification.style.background = colorGreen;
-			else if (res.notification.color == "blue")
+			else if (notificationConfig.color == "blue")
 				notification.style.background = colorBlue;
-			else if (res.notification.color == "yellow")
+			else if (notificationConfig.color == "yellow")
 				notification.style.background = colorYellow;
-			else notification.style.background = res.notification.color;
-			if (res.notification.icon.match(/^(http|https):\/\/[^ "]+$/))
-				notificationIcon.src = res.notification.icon;
-			else if (res.notification.icon == "info")
+			else if (notificationConfig.color)
+				notification.style.background = notificationConfig.color;
+
+			const notifIcon = typeof notificationConfig.icon === 'string' ? notificationConfig.icon : '';
+			if (notifIcon.match(/^(http|https):\/\/[^ "]+$/))
+				notificationIcon.src = notifIcon;
+			else if (notifIcon == "info")
 				notificationIcon.src = "assets/images/notification/info.png";
-			else if (res.notification.icon == "warning")
+			else if (notifIcon == "warning")
 				notificationIcon.src = "assets/images/notification/exclamation2.png";
-			else if (res.notification.icon == "error")
+			else if (notifIcon == "error")
 				notificationIcon.src = "assets/images/notification/error.png";
-			else if (res.notification.icon == "exclamation")
+			else if (notifIcon == "exclamation")
 				notificationIcon.src = "assets/images/notification/exclamation.png";
 			else notificationIcon.style.display = "none";
 			await this.showNotification();
@@ -509,14 +517,14 @@ class Home {
 								instanceSelect = newInstanceSelect.name;
 								setStatus(newInstanceSelect);
 								setBackgroundMusic(newInstanceSelect.backgroundMusic);
-								setInstanceBackground(newInstanceSelect.background);
+								setInstanceBackground(this.getInstanceBackgroundSource(newInstanceSelect));
 								await this.db.updateData("configClient", configClient);
 							} else if (instancesList.length > 0) {
 								configClient.instance_selct = instancesList[0].name;
 								instanceSelect = instancesList[0].name;
 								setStatus(instancesList[0]);
 								setBackgroundMusic(instancesList[0].backgroundMusic);
-								setInstanceBackground(instancesList[0].background);
+								setInstanceBackground(this.getInstanceBackgroundSource(instancesList[0]));
 								await this.db.updateData("configClient", configClient);
 							}
 						}
@@ -528,7 +536,7 @@ class Home {
 				if (instanceSelect && instance.name == instanceSelect) {
 					setStatus(instance);
 					setBackgroundMusic(instance.backgroundMusic);
-					setInstanceBackground(instance.background);
+					setInstanceBackground(this.getInstanceBackgroundSource(instance));
 					this.updateSelectedInstanceStyle(instanceSelect);
 				}
 
@@ -546,9 +554,13 @@ class Home {
 				this.showInstancePopupWithLoading();
 
 				// Verificar si hay bloqueo de dispositivo u otros errores
-				let hwid = await getHWID();
-				let check = await checkHWID(hwid);
-				let fetchError = await getFetchError();
+				let check = false;
+				let fetchError = false;
+				if (!dev) {
+					let hwid = await getHWID();
+					check = await checkHWID(hwid);
+					fetchError = await getFetchError();
+				}
 
 				if (check) {
 					// Ocultar el popup de carga y mostrar error
@@ -694,20 +706,18 @@ class Home {
 					setStatus(options);
 					setBackgroundMusic(options.backgroundMusic);
 					const performanceMode = isPerformanceModeEnabled();
+					const backgroundSource = this.getInstanceBackgroundSource(options);
 					if (performanceMode) {
 						document
 							.querySelector(".server-status-icon")
-							?.setAttribute("data-background", options.background);
-						if (
-							options.background &&
-							options.background.match(/^(http|https):\/\/[^ "]+$/)
-						) {
-							await captureAndSetVideoFrame(options.background);
+							?.setAttribute("data-background", backgroundSource);
+						if (backgroundSource) {
+							await captureAndSetVideoFrame(backgroundSource);
 						} else {
 							await captureAndSetVideoFrame();
 						}
 					} else {
-						setInstanceBackground(options.background);
+						setInstanceBackground(backgroundSource);
 					}
 					this.updateSelectedInstanceStyle(newInstanceSelect);
 				}
@@ -856,9 +866,13 @@ class Home {
 			return;
 		}
 
-		let hwid = await getHWID();
-		let check = await checkHWID(hwid);
-		let fetchError = await getFetchError();
+		let check = false;
+		let fetchError = false;
+		if (!dev) {
+			let hwid = await getHWID();
+			check = await checkHWID(hwid);
+			fetchError = await getFetchError();
+		}
 
 		if (check) {
 			if (fetchError == false) {
@@ -2924,37 +2938,31 @@ ${error.message}`,
 	async loadRecentInstances() {
 		try {
 			const configClient = await this.db.readData("configClient");
-			const recentInstances = configClient.recent_instances || [];
 			const recentInstancesContainer =
 				document.querySelector(".recent-instances");
 			const instancesList = await config.getInstanceList();
 
+			if (!recentInstancesContainer) return;
 			recentInstancesContainer.innerHTML = "";
 
-			if (
-				!recentInstances.length ||
-				!instancesList ||
-				instancesList.length === 0
-			) {
+			if (!instancesList || instancesList.length === 0) {
 				return;
 			}
 
-			const validInstances = recentInstances.filter((name) =>
-				instancesList.some((instance) => instance.name === name)
-			);
-
-			if (validInstances.length !== recentInstances.length) {
-				configClient.recent_instances = validInstances;
-				await this.db.updateData("configClient", configClient);
-			}
-
 			const username = await getUsername();
+			const visibleInstances = instancesList.filter((instance) => {
+				if (!instance || !instance.name) return false;
+				if (instance.whitelistActive) {
+					return (
+						Array.isArray(instance.whitelist) &&
+						instance.whitelist.includes(username)
+					);
+				}
+				return true;
+			});
 
-			for (const instanceName of validInstances) {
-				const instance = instancesList.find((i) => i.name === instanceName);
-
-				if (!instance) continue;
-
+			for (const instance of visibleInstances) {
+				const instanceName = instance.name;
 				const button = document.createElement("div");
 				button.classList.add("recent-instance-button");
 				button.style.backgroundImage = `url(${
@@ -3180,15 +3188,13 @@ ${error.message}`,
 			setStatus(instance);
 
 			const performanceMode = isPerformanceModeEnabled();
+			const backgroundSource = this.getInstanceBackgroundSource(instance);
 			if (performanceMode) {
 				setBackgroundMusic(instance.backgroundMusic);
-				if (
-					instance.background &&
-					instance.background.match(/^(http|https):\/\/[^ "]+$/)
-				) {
+				if (backgroundSource) {
 					document
 						.querySelector(".server-status-icon")
-						?.setAttribute("data-background", instance.background);
+						?.setAttribute("data-background", backgroundSource);
 				} else {
 					document
 						.querySelector(".server-status-icon")
@@ -3196,7 +3202,7 @@ ${error.message}`,
 				}
 			} else {
 				setBackgroundMusic(instance.backgroundMusic);
-				setInstanceBackground(instance.background);
+				setInstanceBackground(this.getInstanceBackgroundSource(instance));
 			}
 
 			this.updateSelectedInstanceStyle(instanceName);
@@ -3221,14 +3227,23 @@ ${error.message}`,
 		});
 	}
 
+	getInstanceBackgroundSource(instance) {
+		if (!instance) return "";
+		const candidates = [instance.background, instance.thumbnail, instance.icon];
+		for (const value of candidates) {
+			if (typeof value === "string" && value.match(/^(http|https):\/\/[^ "]+$/)) {
+				return value;
+			}
+		}
+		return "";
+	}
+
 	updateInstanceBackground(instance) {
 		const performanceMode = isPerformanceModeEnabled();
+		const backgroundSource = this.getInstanceBackgroundSource(instance);
 		if (performanceMode) {
-			if (
-				instance.background &&
-				instance.background.match(/^(http|https):\/\/[^ "]+$/)
-			) {
-				captureAndSetVideoFrame(instance.background);
+			if (backgroundSource) {
+				captureAndSetVideoFrame(backgroundSource);
 			}
 		}
 	}

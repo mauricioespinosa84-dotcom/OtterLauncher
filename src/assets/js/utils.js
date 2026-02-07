@@ -1058,8 +1058,8 @@ async function setStatus(opt) {
     }
     
     instanceIcon.src = opt.icon || './assets/images/icon.png'
-    let { ip, port, nameServer } = opt.status
-    nameServerElement.innerHTML = nameServer
+    let { ip, port, nameServer } = opt.status || {}
+    nameServerElement.innerHTML = nameServer || opt.name || 'Servidor'
     
     // Mostrar estado de carga inmediatamente
     statusServerElement.classList.remove('red')
@@ -1068,6 +1068,14 @@ async function setStatus(opt) {
     playersOnline.innerHTML = '0'
     
     
+    if (!ip || typeof ip !== 'string' || ip.trim() === '') {
+        statusServerElement.classList.add('red')
+        statusServerElement.innerHTML = `Offline - 0 ms`
+        document.querySelector('.status-player-count').classList.add('red')
+        playersOnline.innerHTML = '0'
+        return
+    }
+
     try {
         // Use the new lightweight MinecraftStatus
         let status = new MinecraftStatus(ip, port);
@@ -1246,47 +1254,57 @@ async function discordAccount() {
 }
 
 async function getTermsAndConditions() {
+    const fallback = {
+        htmlContent: '<p>Terminos y condiciones no disponibles.</p>',
+        lastModified: new Date().toISOString()
+    };
+
     try {
-        console.log('Iniciando descarga de términos y condiciones...');
-        const termsResponse = await fetch(`${pkg.url}launcher/config-launcher/terms.txt`);
-        const metaResponse = await fetch(`${pkg.url}launcher/config-launcher/terms-meta.json`);
-        
+        const baseUrl = (pkg.url || '').replace(/\/$/, '');
+        if (!baseUrl) return fallback;
+
+        console.log('Iniciando descarga de terminos y condiciones...');
+        const termsUrl = `${baseUrl}/launcher/config-launcher/terms.txt`;
+        const metaUrl = `${baseUrl}/launcher/config-launcher/terms-meta.json`;
+
+        const [termsResponse, metaResponse] = await Promise.all([
+            fetch(termsUrl),
+            fetch(metaUrl)
+        ]);
 
         if (!termsResponse.ok) {
-            console.error('Error al obtener términos:', termsResponse.statusText);
-            throw new Error(`Error al obtener términos: ${termsResponse.statusText}`);
-        }
-
-        if (!metaResponse.ok) {
-            console.error('Error al obtener meta información:', metaResponse.statusText);
-            throw new Error(`Error al obtener meta información: ${metaResponse.statusText}`);
+            console.warn('Error al obtener terminos:', termsResponse.statusText);
+            return fallback;
         }
 
         const termsContent = await termsResponse.text();
-        const metaResponseText = await metaResponse.text();
-        
-        let metaInfo;
-        try {
-            if (!metaResponseText || metaResponseText.trim() === '') {
-                metaInfo = { lastModified: 'desconocida' };
-            } else {
-                metaInfo = JSON.parse(metaResponseText);
+        let metaInfo = { lastModified: new Date().toISOString() };
+
+        if (!metaResponse.ok) {
+            console.warn('Error al obtener meta informacion:', metaResponse.statusText);
+        } else {
+            const metaResponseText = await metaResponse.text();
+            try {
+                if (!metaResponseText || metaResponseText.trim() === '') {
+                    metaInfo = { lastModified: new Date().toISOString() };
+                } else {
+                    metaInfo = JSON.parse(metaResponseText);
+                }
+            } catch (jsonError) {
+                console.warn('Error parseando metaInfo, usando valores por defecto:', jsonError.message);
+                metaInfo = { lastModified: new Date().toISOString() };
             }
-        } catch (jsonError) {
-            console.warn('Error parseando metaInfo, usando valores por defecto:', jsonError.message);
-            metaInfo = { lastModified: 'desconocida' };
         }
 
         const htmlContent = marked(termsContent);
-        const lastModified = metaInfo.lastModified || 'desconocida';
+        const lastModified = metaInfo.lastModified || new Date().toISOString();
 
         return { htmlContent, lastModified };
     } catch (error) {
-        console.error('Error al inicializar los términos y condiciones:', error.message);
-        throw error;
+        console.warn('Error al inicializar los terminos y condiciones:', error.message || error);
+        return fallback;
     }
 }
-
 async function showTermsAndConditions() {
     try {
         const result = await getTermsAndConditions();
@@ -1375,8 +1393,9 @@ async function setMusicSource(source) {
     let dev = process.env.NODE_ENV === 'dev';
     if (!res.musicBeta && !dev) return;
     if (source === undefined || source === '' || source === 'none') {
-        if (res.custom_music.match(/^(http|https):\/\/[^ "]+$/)) {
-            source = res.custom_music;
+        const customMusic = typeof res.custom_music === 'string' ? res.custom_music : '';
+        if (customMusic && customMusic.match(/^(http|https):\/\/[^ "]+$/)) {
+            source = customMusic;
         } else {
         source = './assets/sounds/music/default-music.mp3';
         }
@@ -1802,3 +1821,4 @@ export {
     localization as localization
 }
 window.setVideoSource = setVideoSource;
+

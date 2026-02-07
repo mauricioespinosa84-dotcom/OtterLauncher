@@ -1,25 +1,23 @@
 {
-    "name": "EventifyTeamLauncher",
-    "productname": "Eventify Team",
-    "version": "1.0.6",
+    "name": "OtterLauncher",
+    "productname": "Otter Studio",
+    "version": "1.0.0",
     "sub_version": "",
     "changelog": "Arreglado el inicio de sesión.",
-    "description": "Launcher de minecraft para los servidores de Eventify Team",
+    "description": "Launcher de Otter",
+    "url": "https://mauricioespinosa84-dotcom.github.io/launcher-backend/",
     "main": "src/app.js",
-    "author": {
-        "name": "Miguelki",
-        "email": "admin@miguelkinetwork.fun",
-        "url": "https://github.com/miguelkix30"
-    },
-    "url": "http://eventify.miguelkiwebservices.com/",
-    "azuriom_url": "https://minecraft.miguelkinetwork.info/",
-    "discord_url": "https://discord.gg/DYxHEtKERe",
-    "discord_client_id": "1447931538380423250",
+        "author": {
+            "name": "ShoutoGaming",
+            "email": "",
+            "url": "https://github.com/ShoutoGaming"
+        },
+    
     "scripts": {
         "start": "cross-env-shell NODE_ENV=dev electron .",
         "dev": "cross-env-shell DEV_TOOL=open nodemon --exec npm start",
         "build": "node build.js --obf=true --build=platform",
-        "icon": "node build.js --icon=https://github.com/EventifyTeamDev/EventifyTeamLauncher/master/src/assets/images/icon.png"
+        "icon": "node build.js --icon=https://github.com/mauricioespinosa84-dotcom/OtterLauncher/master/src/assets/images/icon.png"
     },
     "license": "CCANC",
     "nodemonConfig": {
@@ -56,6 +54,6 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/EventifyTeamDev/EventifyTeamLauncher.git"
+        "url": "git+https://github.com/mauricioespinosa84-dotcom/OtterLauncher.git"
     }
 }

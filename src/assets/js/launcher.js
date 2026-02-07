@@ -55,6 +55,17 @@ const fs = require("fs");
 const os = require("os");
 const fetch = require("node-fetch");
 let dev = process.env.NODE_ENV === "dev";
+const safeLoginMSG = async () => {
+  if (dev) {
+    console.log("Skipping loginMSG in dev mode");
+    return;
+  }
+  try {
+    await safeLoginMSG();
+  } catch (error) {
+    console.warn("loginMSG failed:", error?.message || error);
+  }
+};
 
 class Launcher {
   async init() {
@@ -1501,7 +1512,7 @@ class Launcher {
                         if (account_ID == account_selected) {
                           clickableHead();
                           await setUsername(refresh_accounts.name);
-                          await loginMSG();
+                          await safeLoginMSG();
                         }
                     } else {
                         // Fallback: account needs re-authentication
@@ -1600,7 +1611,7 @@ class Launcher {
                   // Solo seleccionar la cuenta pero no agregar visualmente aquí
                   clickableHead();
                   await setUsername(account.name);
-                  await loginMSG();
+                  await safeLoginMSG();
                 }
               } catch (error) {
                 console.error(`[Account] ${account.name}: ${error.message}`);
@@ -1624,7 +1635,7 @@ class Launcher {
                     if (account_ID == account_selected) {
                       clickableHead();
                       await setUsername(account.name);
-                      await loginMSG();
+                      await safeLoginMSG();
                     }
                   } catch (refreshError) {
                     console.error(`[Account] ${account.name}: Token refresh failed: ${refreshError.message}`);
@@ -1712,7 +1723,7 @@ class Launcher {
                   if (account_ID == account_selected) {
                     clickableHead();
                     await setUsername(refresh_accounts.name); // Use the validated name
-                    await loginMSG();
+                    await safeLoginMSG();
                   }
                 } else {
                   // For online Mojang accounts (legacy)
@@ -1842,7 +1853,7 @@ class Launcher {
             await accountSelect(account);
             await clickableHead();
             await setUsername(account.name);
-            await loginMSG();
+            await safeLoginMSG();
             changePanel('home');
         }
         
