@@ -40,6 +40,7 @@ import MinecraftStatus from "../utils/minecraft-status.js";
 
 const path = require("node:path");
 const fs = require("node:fs");
+const crypto = require("node:crypto");
 
 const clientId = pkg.discord_client_id;
 const DiscordRPC = require("discord-rpc");
@@ -83,6 +84,7 @@ class Home {
 	static id = "home";
 	intervalId = null;
 	instancesCache = [];
+	modsSyncStarted = false;
 
 	async init(config) {
 		this.config = config;
@@ -737,6 +739,10 @@ class Home {
 				this.notification();
 			});
 		}
+
+		if (instancesList && instancesList.length > 0) {
+			void this.syncModsForAllInstances(instancesList);
+		}
 	}
 
 	disablePlayButton() {
@@ -985,6 +991,13 @@ ${error.message}`,
 			});
 			return;
 		}
+
+		// Sincronizar mods con el backend antes de iniciar
+		if (infoStarting) {
+			infoStarting.innerHTML =
+				localization.t('home.syncing_mods') || "Sincronizando mods...";
+		}
+		await this.syncModsFromManifest(options);
 
 		playInstanceBTN.style.display = "none";
 		infoStartingBOX.style.display = "flex";
@@ -2860,6 +2873,177 @@ ${error.message}`,
 		}
 
 		return true;
+	}
+
+	async getRootPath() {
+		const appdataPath = await appdata();
+		const dataDir =
+			this.config?.dataDirectory ||
+			(await config.GetConfig())?.dataDirectory ||
+			'MiguelkiNetwork';
+		return `${appdataPath}/${process.platform === "darwin" ? dataDir : `.${dataDir}`}`;
+	}
+
+	listFilesRecursive(dirPath, basePath = dirPath, out = []) {
+		if (!fs.existsSync(dirPath)) return out;
+		for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+			const fullPath = path.join(dirPath, entry.name);
+			if (entry.isDirectory()) {
+				this.listFilesRecursive(fullPath, basePath, out);
+			} else {
+				out.push(path.relative(basePath, fullPath));
+			}
+		}
+		return out;
+	}
+
+	async sha1File(filePath) {
+		return new Promise((resolve, reject) => {
+			const hash = crypto.createHash("sha1");
+			const stream = fs.createReadStream(filePath);
+			stream.on("error", reject);
+			stream.on("data", (data) => hash.update(data));
+			stream.on("end", () => resolve(hash.digest("hex")));
+		});
+	}
+
+	async syncModsFromManifest(instance) {
+		try {
+			if (!instance?.url) return;
+
+			const rootPath = await this.getRootPath();
+			const modsDir = path.join(rootPath, "instances", instance.name, "mods");
+			if (!fs.existsSync(modsDir)) {
+				fs.mkdirSync(modsDir, { recursive: true });
+			}
+
+			const response = await fetch(instance.url, { cache: "no-store" });
+			if (!response.ok) {
+				console.warn(`No se pudo descargar manifest: ${response.status}`);
+				return;
+			}
+			let manifest;
+			try {
+				manifest = await response.json();
+			} catch (err) {
+				console.warn("Manifest inválido, no se pudo parsear JSON");
+				return;
+			}
+
+			const files = Array.isArray(manifest)
+				? manifest
+				: Array.isArray(manifest?.files)
+				? manifest.files
+				: [];
+
+			const expected = new Map();
+			for (const file of files) {
+				if (!file?.path || typeof file.path !== "string") continue;
+				const normalized = file.path.replace(/\\/g, "/");
+				if (!normalized.startsWith("mods/")) continue;
+				const rel = normalized.slice("mods/".length);
+				if (!rel) continue;
+				expected.set(rel, file);
+			}
+
+			if (expected.size === 0) return;
+
+			// Eliminar mods locales que ya no existen en el backend
+			const localFiles = this.listFilesRecursive(modsDir);
+			for (const relPath of localFiles) {
+				if (!relPath) continue;
+				const normalized = relPath.replace(/\\/g, "/");
+				if (!normalized.endsWith(".jar") && !normalized.endsWith(".disabled")) continue;
+
+				const compareRel = normalized.endsWith(".disabled")
+					? normalized.replace(/\.disabled$/, ".jar")
+					: normalized;
+
+				if (!expected.has(compareRel)) {
+					try {
+						fs.unlinkSync(path.join(modsDir, relPath));
+						console.log(`🧹 Mod removido (ya no existe en backend): ${relPath}`);
+					} catch (err) {
+						console.warn(`No se pudo eliminar ${relPath}: ${err.message}`);
+					}
+				}
+			}
+
+			// Descargar o actualizar mods del backend
+			for (const [rel, entry] of expected.entries()) {
+				const targetJarPath = path.join(modsDir, ...rel.split("/"));
+				const disabledPath = targetJarPath.replace(/\.jar$/i, "") + ".disabled";
+				const targetPath =
+					fs.existsSync(disabledPath) && !fs.existsSync(targetJarPath)
+						? disabledPath
+						: targetJarPath;
+
+				fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+
+				let needsDownload = true;
+				if (fs.existsSync(targetPath)) {
+					if (entry?.hash) {
+						try {
+							const localHash = await this.sha1File(targetPath);
+							needsDownload =
+								localHash.toLowerCase() !== String(entry.hash).toLowerCase();
+						} catch (err) {
+							needsDownload = true;
+						}
+					} else if (entry?.size) {
+						const stat = fs.statSync(targetPath);
+						needsDownload = stat.size !== entry.size;
+					} else {
+						needsDownload = false;
+					}
+				}
+
+				if (!needsDownload) continue;
+
+				if (!entry?.url) {
+					console.warn(`No hay URL para descargar: ${rel}`);
+					continue;
+				}
+
+				try {
+					const fileRes = await fetch(entry.url, { cache: "no-store" });
+					if (!fileRes.ok) {
+						console.warn(`Error descargando ${rel}: ${fileRes.status}`);
+						continue;
+					}
+					const buffer = Buffer.from(await fileRes.arrayBuffer());
+					fs.writeFileSync(targetPath, buffer);
+					console.log(`⬇️ Mod actualizado: ${rel}`);
+				} catch (err) {
+					console.warn(`Fallo descargando ${rel}: ${err.message}`);
+				}
+			}
+		} catch (err) {
+			console.warn(`Error sincronizando mods: ${err.message}`);
+		}
+	}
+
+	async syncModsForAllInstances(instancesList, force = false) {
+		if (this.modsSyncStarted && !force) return;
+		this.modsSyncStarted = true;
+
+		let list = instancesList;
+		if (!Array.isArray(list) || list.length === 0) {
+			try {
+				list = await config.getInstanceList();
+			} catch (err) {
+				console.warn(`No se pudo obtener lista de instancias: ${err.message}`);
+				return;
+			}
+		}
+
+		if (!Array.isArray(list) || list.length === 0) return;
+
+		console.log(`🔄 Sincronizando mods para ${list.length} instancias...`);
+		for (const instance of list) {
+			await this.syncModsFromManifest(instance);
+		}
+		console.log("✅ Sincronización de mods completada");
 	}
 
 	async checkQueueStatus(hwid, username) {

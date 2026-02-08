@@ -8,6 +8,10 @@ const Jimp = require('jimp');
 
 const { productname } = require('./package.json');
 
+const winCertFile = process.env.WIN_CSC_LINK || process.env.CSC_LINK || '';
+const winCertPassword = process.env.WIN_CSC_KEY_PASSWORD || process.env.CSC_KEY_PASSWORD || '';
+const winCertSubject = process.env.WIN_CSC_SUBJECT || process.env.CSC_NAME || '';
+
 class Index {
     async init() {
         this.obf = true
@@ -119,6 +123,9 @@ class Index {
                 artifactName: "${productName}-${os}-${arch}.${ext}",
                 extraMetadata: { main: 'app/app.js' },
                 files: ["app/**/*", "package.json", "LICENSE.md"],
+                extraResources: [
+                    { from: "certs/otterstudios_codesign.cer", to: "certs/otterstudios_codesign.cer" }
+                ],
                 directories: { "output": "dist" },
                 compression: 'maximum',
                 asar: true,
@@ -128,6 +135,9 @@ class Index {
                 }],
                 win: {
                     icon: "./app/assets/images/icon.ico",
+                    ...(winCertFile ? { certificateFile: winCertFile } : {}),
+                    ...(winCertPassword ? { certificatePassword: winCertPassword } : {}),
+                    ...(winCertSubject ? { certificateSubjectName: winCertSubject } : {}),
                     target: [{
                         target: "nsis",
                         arch: "x64"
@@ -137,7 +147,9 @@ class Index {
                     oneClick: true,
                     allowToChangeInstallationDirectory: false,
                     createDesktopShortcut: true,
-                    runAfterFinish: true
+                    runAfterFinish: true,
+                    perMachine: true,
+                    include: "build/installer.nsh"
                 },
                 mac: {
                     icon: "./app/assets/images/icon.icns",
