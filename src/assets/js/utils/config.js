@@ -125,7 +125,7 @@ class Config {
             const fetchJsonSafe = async (targetUrl) => {
                 try {
                     const response = await nodeFetch(targetUrl, {
-                        headers: { 'User-Agent': 'MiguelkiNetworkMCLauncher' }
+                        headers: { 'User-Agent': 'MiguelkiNetworkMCLauncher', 'Cache-Control': 'no-cache' }
                     });
                     if (!response.ok) return null;
                     const text = await response.text();
@@ -136,6 +136,13 @@ class Config {
                 }
             };
 
+            const fetchInstancesFallback = async () => {
+                const fallbackUrl = `${(pkg.url || '').replace(/\/$/, '')}/launcher/instances.json`;
+                const fallbackData = await fetchJsonSafe(fallbackUrl);
+                if (fallbackData) return parseInstances(fallbackData);
+                return null;
+            };
+
             let urlInstance = `${url}/files?checksum=${Launcherkey}&id=${hwid}`;
             let response = await nodeFetch(urlInstance, {
                 headers: {
@@ -144,9 +151,8 @@ class Config {
             });
             
             if (!response.ok) {
-                const fallbackUrl = `${(pkg.url || '').replace(/\/$/, '')}/launcher/instances.json`;
-                const fallbackData = await fetchJsonSafe(fallbackUrl);
-                if (fallbackData) return parseInstances(fallbackData);
+                const fallbackInstances = await fetchInstancesFallback();
+                if (fallbackInstances) return fallbackInstances;
                 console.error(`Server returned status: ${response.status} ${response.statusText}`);
                 return [];
             }
@@ -154,6 +160,8 @@ class Config {
             const responseText = await response.text();
             if (!responseText || responseText.trim() === '') {
                 console.error('Empty response received from server');
+                const fallbackInstances = await fetchInstancesFallback();
+                if (fallbackInstances) return fallbackInstances;
                 return [];
             }
             
@@ -163,32 +171,35 @@ class Config {
             } catch (jsonError) {
                 console.error('Error parsing JSON response:', jsonError.message);
                 console.error('Response text:', responseText.substring(0, 200));
+                const fallbackInstances = await fetchInstancesFallback();
+                if (fallbackInstances) return fallbackInstances;
                 return [];
             }
-            
-            return parseInstances(instances);
+
+            const parsedInstances = parseInstances(instances);
+            if (!parsedInstances || parsedInstances.length === 0) {
+                const fallbackInstances = await fetchInstancesFallback();
+                if (fallbackInstances) return fallbackInstances;
+            }
+            return parsedInstances;
         } catch (err) {
             console.error("Error fetching instance list:", err);
-            const fallbackUrl = `${(pkg.url || '').replace(/\/$/, '')}/launcher/instances.json`;
-            const fallbackData = await (async () => {
+            const fallbackInstances = await (async () => {
+                const fallbackUrl = `${(pkg.url || '').replace(/\/$/, '')}/launcher/instances.json`;
                 try {
                     const res = await nodeFetch(fallbackUrl, {
-                        headers: { 'User-Agent': 'MiguelkiNetworkMCLauncher' }
+                        headers: { 'User-Agent': 'MiguelkiNetworkMCLauncher', 'Cache-Control': 'no-cache' }
                     });
                     if (!res.ok) return null;
                     const text = await res.text();
                     if (!text || text.trim() === '') return null;
-                    return JSON.parse(text);
+                    const json = JSON.parse(text);
+                    return parseInstances(json);
                 } catch {
                     return null;
                 }
             })();
-            if (fallbackData) {
-                if (Array.isArray(fallbackData)) return fallbackData;
-                if (typeof fallbackData === 'object' && fallbackData) {
-                    return Object.entries(fallbackData).map(([name, data]) => ({ ...data, name }));
-                }
-            }
+            if (fallbackInstances) return fallbackInstances;
             return [];
         }
     }

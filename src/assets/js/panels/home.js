@@ -82,6 +82,7 @@ const { shell, ipcRenderer } = require("electron");
 class Home {
 	static id = "home";
 	intervalId = null;
+	instancesCache = [];
 
 	async init(config) {
 		this.config = config;
@@ -171,8 +172,8 @@ class Home {
 		const notificationConfig = res && typeof res === 'object' && res.notification ? res.notification : { enabled: false };
 		let check = false;
 		let fetchError = false;
+		const hwid = dev ? "dev" : await getHWID();
 		if (!dev) {
-			let hwid = await getHWID();
 			check = await checkHWID(hwid);
 			fetchError = await getFetchError();
 		}
@@ -458,6 +459,9 @@ class Home {
 		);
 		let username = await getUsername();
 		let instancesList = await config.getInstanceList();
+		if (Array.isArray(instancesList) && instancesList.length > 0) {
+			this.instancesCache = instancesList;
+		}
 		let instanceSelect =
 			instancesList &&
 			instancesList.length > 0 &&
@@ -769,6 +773,9 @@ class Home {
 		}
 
 		let instance = await config.getInstanceList();
+		if (!instance || instance.length === 0) {
+			instance = this.instancesCache || [];
+		}
 
 		if (!configClient.account_selected) {
 			this.enablePlayButton();
@@ -987,7 +994,9 @@ ${error.message}`,
 		this.hideSubProgressBar();
 
 		try {
-			const queueResult = await this.checkQueueStatus(hwid, username);
+			const queueResult = dev
+				? { cancelled: false }
+				: await this.checkQueueStatus(hwid, username);
 			if (queueResult.cancelled) {
 				this.enablePlayButton();
 				playInstanceBTN.style.display = "flex";
@@ -1088,55 +1097,64 @@ ${error.message}`,
 		let execKey = null;
 		let execKeyValid = false;
 		let gameArgs = options.game_args || [];
-		try {
-			const execKeyResponse = await getExecutionKey();
+		const skipExecKey =
+			dev ||
+			(options && options.exec_key_required === false) ||
+			(pkg && typeof pkg.url === "string" && pkg.url.includes("github.io"));
 
-			if (
-				execKeyResponse &&
-				execKeyResponse.status === "success" &&
-				execKeyResponse.exec_key
-			) {
-				execKey = execKeyResponse.exec_key;
-				execKeyValid = true;
-				console.log("Execution key obtained successfully");
+		if (skipExecKey) {
+			console.log("Skipping execution key (dev/static host or disabled).");
+		} else {
+			try {
+				const execKeyResponse = await getExecutionKey();
 
-				// Corregir cómo se añaden los argumentos según si gameArgs es array o string
-				if (Array.isArray(gameArgs)) {
-					gameArgs.push("--key", execKey, "--id", hwid);
-				} else if (typeof gameArgs === "string") {
-					// Si es string, añadir los argumentos con el formato correcto
-					gameArgs = gameArgs
-						? `${gameArgs} --key ${execKey} --id ${hwid}`
-						: `--key ${execKey} --id ${hwid}`;
+				if (
+					execKeyResponse &&
+					execKeyResponse.status === "success" &&
+					execKeyResponse.exec_key
+				) {
+					execKey = execKeyResponse.exec_key;
+					execKeyValid = true;
+					console.log("Execution key obtained successfully");
+
+					// Corregir cómo se añaden los argumentos según si gameArgs es array o string
+					if (Array.isArray(gameArgs)) {
+						gameArgs.push("--key", execKey, "--id", hwid);
+					} else if (typeof gameArgs === "string") {
+						// Si es string, añadir los argumentos con el formato correcto
+						gameArgs = gameArgs
+							? `${gameArgs} --key ${execKey} --id ${hwid}`
+							: `--key ${execKey} --id ${hwid}`;
+					}
+				} else {
+					throw new Error("Invalid execution key response");
 				}
-			} else {
-				throw new Error("Invalid execution key response");
-			}
-		} catch (keyError) {
-			console.error("Error fetching execution key:", keyError.message);
+			} catch (keyError) {
+				console.error("Error fetching execution key:", keyError.message);
 
-			// Ask user if they want to continue without execution key
-			const continueWithoutKey = await new Promise((resolve) => {
-				let keyErrorPopup = new popup();
-				keyErrorPopup.openDialog({
-					title: "Error de verificación",
-					content: `Error al obtener la clave de ejecución: ${keyError.message}. Sin esta verificación, el juego podría no iniciar correctamente. ¿Desea continuar de todos modos?`,
-					options: true,
-					callback: resolve,
+				// Ask user if they want to continue without execution key
+				const continueWithoutKey = await new Promise((resolve) => {
+					let keyErrorPopup = new popup();
+					keyErrorPopup.openDialog({
+						title: "Error de verificación",
+						content: `Error al obtener la clave de ejecución: ${keyError.message}. Sin esta verificación, el juego podría no iniciar correctamente. ¿Desea continuar de todos modos?`,
+						options: true,
+						callback: resolve,
+					});
 				});
-			});
 
-			if (continueWithoutKey === "cancel") {
-				this.enablePlayButton();
-				infoStartingBOX.style.display = "none";
-				playInstanceBTN.style.display = "flex";
-				instanceSelectBTN.disabled = false;
-				instanceSelectBTN.classList.remove("disabled");
-				ipcRenderer.send("main-window-progress-reset");
-				if (closeGameButton) {
-					closeGameButton.style.display = "none";
+				if (continueWithoutKey === "cancel") {
+					this.enablePlayButton();
+					infoStartingBOX.style.display = "none";
+					playInstanceBTN.style.display = "flex";
+					instanceSelectBTN.disabled = false;
+					instanceSelectBTN.classList.remove("disabled");
+					ipcRenderer.send("main-window-progress-reset");
+					if (closeGameButton) {
+						closeGameButton.style.display = "none";
+					}
+					return;
 				}
-				return;
 			}
 		}
 
@@ -2941,6 +2959,9 @@ ${error.message}`,
 			const recentInstancesContainer =
 				document.querySelector(".recent-instances");
 			const instancesList = await config.getInstanceList();
+			if (Array.isArray(instancesList) && instancesList.length > 0) {
+				this.instancesCache = instancesList;
+			}
 
 			if (!recentInstancesContainer) return;
 			recentInstancesContainer.innerHTML = "";
@@ -2963,13 +2984,14 @@ ${error.message}`,
 
 			for (const instance of visibleInstances) {
 				const instanceName = instance.name;
-				const button = document.createElement("div");
-				button.classList.add("recent-instance-button");
-				button.style.backgroundImage = `url(${
+				const instanceIcon = this.resolveInstanceAssetUrl(
 					instance.icon ||
 					instance.thumbnail ||
 					"assets/images/default/placeholder.jpg"
-				})`;
+				);
+				const button = document.createElement("div");
+				button.classList.add("recent-instance-button");
+				button.style.backgroundImage = `url(${instanceIcon})`;
 				button.dataset.instanceName = instanceName;
 
 				if (instanceName === configClient.instance_selct) {
@@ -3179,6 +3201,9 @@ ${error.message}`,
 			let instance = await config
 				.getInstanceList()
 				.then((instances) => instances.find((i) => i.name === instanceName));
+			if (!instance && Array.isArray(this.instancesCache) && this.instancesCache.length > 0) {
+				instance = this.instancesCache.find((i) => i.name === instanceName);
+			}
 
 			if (!instance) {
 				return;
@@ -3200,6 +3225,8 @@ ${error.message}`,
 						.querySelector(".server-status-icon")
 						?.removeAttribute("data-background");
 				}
+				// Always update the background in performance mode too
+				setInstanceBackground(backgroundSource);
 			} else {
 				setBackgroundMusic(instance.backgroundMusic);
 				setInstanceBackground(this.getInstanceBackgroundSource(instance));
@@ -3227,12 +3254,33 @@ ${error.message}`,
 		});
 	}
 
+	resolveInstanceAssetUrl(value) {
+		if (!value || typeof value !== "string") return "";
+		const trimmed = value.trim();
+		if (!trimmed) return "";
+
+		if (trimmed.match(/^(https?:\/\/|data:|file:)/)) {
+			return trimmed;
+		}
+
+		// Keep local assets as-is
+		if (trimmed.startsWith("./") || trimmed.startsWith("../") || trimmed.startsWith("assets/")) {
+			return trimmed;
+		}
+
+		const baseUrl = (pkg.url || "").replace(/\/$/, "");
+		if (!baseUrl) return trimmed;
+
+		return `${baseUrl}/${trimmed.replace(/^\/+/, "")}`;
+	}
+
 	getInstanceBackgroundSource(instance) {
 		if (!instance) return "";
 		const candidates = [instance.background, instance.thumbnail, instance.icon];
 		for (const value of candidates) {
-			if (typeof value === "string" && value.match(/^(http|https):\/\/[^ "]+$/)) {
-				return value;
+			const resolved = this.resolveInstanceAssetUrl(value);
+			if (resolved) {
+				return resolved;
 			}
 		}
 		return "";

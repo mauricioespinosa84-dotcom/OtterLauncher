@@ -205,11 +205,33 @@ ipcMain.on('main-window-close', async () => {
     }
     MainWindow.destroyWindow();
 });
-ipcMain.on('main-window-reload', () => MainWindow.getWindow().reload());
-ipcMain.on('main-window-progress', (event, options) => MainWindow.getWindow().setProgressBar(options.progress / options.size));
-ipcMain.on('main-window-progress-reset', () => MainWindow.getWindow().setProgressBar(-1));
-ipcMain.on('main-window-progress-load', () => MainWindow.getWindow().setProgressBar(2));
-ipcMain.on('main-window-minimize', () => MainWindow.getWindow().minimize());
+ipcMain.on('main-window-reload', () => {
+    const win = MainWindow.getWindow();
+    if (win && !win.isDestroyed()) win.reload();
+});
+ipcMain.on('main-window-progress', (event, options) => {
+    const win = MainWindow.getWindow();
+    if (!win || win.isDestroyed() || typeof win.setProgressBar !== 'function') return;
+    const size = Number(options?.size || 0);
+    const progress = size > 0 ? (options.progress / size) : -1;
+    win.setProgressBar(progress);
+});
+ipcMain.on('main-window-progress-reset', () => {
+    const win = MainWindow.getWindow();
+    if (win && !win.isDestroyed() && typeof win.setProgressBar === 'function') {
+        win.setProgressBar(-1);
+    }
+});
+ipcMain.on('main-window-progress-load', () => {
+    const win = MainWindow.getWindow();
+    if (win && !win.isDestroyed() && typeof win.setProgressBar === 'function') {
+        win.setProgressBar(2);
+    }
+});
+ipcMain.on('main-window-minimize', () => {
+    const win = MainWindow.getWindow();
+    if (win && !win.isDestroyed()) win.minimize();
+});
 
 // Console window IPC handlers
 ipcMain.on('console-window-open', () => {

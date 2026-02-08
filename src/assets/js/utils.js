@@ -1057,7 +1057,17 @@ async function setStatus(opt) {
         return
     }
     
-    instanceIcon.src = opt.icon || './assets/images/icon.png'
+    let iconSource = opt.icon || './assets/images/icon.png'
+    if (typeof iconSource === 'string') {
+        if (!iconSource.match(/^(https?:\/\/|data:|file:)/) &&
+            !iconSource.startsWith('./') &&
+            !iconSource.startsWith('../') &&
+            !iconSource.startsWith('assets/')) {
+            const baseUrl = (pkg.url || '').replace(/\/$/, '')
+            if (baseUrl) iconSource = `${baseUrl}/${iconSource.replace(/^\/+/, '')}`
+        }
+    }
+    instanceIcon.src = iconSource
     let { ip, port, nameServer } = opt.status || {}
     nameServerElement.innerHTML = nameServer || opt.name || 'Servidor'
     
@@ -1103,8 +1113,8 @@ async function setStatus(opt) {
 }
 
 async function setInstanceBackground(opt) {
-    let instancebackground = opt
-    if (instancebackground && instancebackground.match(/^(http|https):\/\/[^ "]+$/)) {
+    let instancebackground = typeof opt === 'string' ? opt.trim() : ''
+    if (instancebackground) {
         // Store the instance background URL in localStorage for persistence
         localStorage.setItem('hasInstanceBackground', 'true');
         localStorage.setItem('instanceBackgroundUrl', instancebackground);

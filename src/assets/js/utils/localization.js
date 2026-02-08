@@ -375,7 +375,7 @@ class Localization {
         // Traducciones básicas en español como fallback
         this.translations[this.fallbackLanguage] = {
             launcher: {
-                title: "Miguelki Network MC Launcher",
+                title: "OTTER STUDIOS",
                 loading: "Cargando...",
                 starting: "Iniciando Launcher...",
                 error: "Error",
@@ -410,7 +410,7 @@ class Localization {
                 completed: "Completado"
             },
             setup: {
-                welcome_title: "Configuración Inicial de Miguelki Network MC Launcher",
+                welcome_title: "Configuración Inicial de OTTER STUDIOS",
                 welcome_message: "¡Bienvenido! Vamos a configurar algunos parámetros para optimizar tu experiencia.",
                 step_1_language: "Selección de Idioma",
                 language_info: "Selecciona tu idioma preferido. Esta configuración se puede cambiar más tarde en los ajustes del launcher.",
