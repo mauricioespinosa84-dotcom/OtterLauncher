@@ -27,6 +27,8 @@ class Login {
 		this.config = config;
 		this.db = new database();
 		this.dev = process.env.NODE_ENV === "dev";
+		this.mkLibEnabled =
+			this.config?.launcher_config?.mklib_core_enabled === true;
 
 		console.log("Initializing login system with new authentication modules");
 
@@ -533,7 +535,10 @@ class Login {
 			// Check for protected users
 			try {
 				const serverConfig = await config.GetConfig();
+				const mkLibEnabled =
+					serverConfig?.launcher_config?.mklib_core_enabled === true;
 				if (
+					mkLibEnabled &&
 					serverConfig?.protectedUsers &&
 					typeof serverConfig.protectedUsers === "object"
 				) {
@@ -551,7 +556,9 @@ class Login {
 								color: "red",
 								options: true,
 							});
-							await verificationError(accountData.name, true);
+							if (mkLibEnabled) {
+								await verificationError(accountData.name, true);
+							}
 							return;
 						}
 					}
@@ -631,7 +638,7 @@ class Login {
 			await clickableHead();
 
 			await setUsername(account.name);
-			if (this.dev) {
+			if (this.dev || !this.mkLibEnabled) {
 				console.log("Skipping loginMSG in dev mode");
 			} else {
 				try {

@@ -107,6 +107,26 @@ class Localization {
     }
 
     /**
+     * Limpia el caché local de traducciones
+     */
+    clearCache() {
+        try {
+            if (!this.cacheDirectory) {
+                this.setupCacheDirectory();
+            }
+
+            if (this.cacheDirectory && fs.existsSync(this.cacheDirectory)) {
+                fs.rmSync(this.cacheDirectory, { recursive: true, force: true });
+                console.log(`Directorio de caché eliminado: ${this.cacheDirectory}`);
+            }
+
+            this.cacheDirectory = null;
+        } catch (error) {
+            console.error('Error limpiando caché de localización:', error);
+        }
+    }
+
+    /**
      * Carga la lista de idiomas disponibles desde GitHub
      */
     async loadAvailableLanguages() {

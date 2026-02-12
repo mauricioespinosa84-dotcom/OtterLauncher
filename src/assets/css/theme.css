@@ -20,11 +20,11 @@
   --icon-unselected: #707070;
   --box: #1A1A1A;
   --box-hover: #202020;
-  --box-button: #0078bd;
-  --box-button-hover: #053e8a;
-  --box-button-hover-2: #001f47;
-  --box-button-gradient-1: #00FFFF;
-  --box-button-gradient-2: #0096FF;
+  --box-button: #C9A37E;
+  --box-button-hover: #B38863;
+  --box-button-hover-2: #8D6346;
+  --box-button-gradient-1: #E9CDB1;
+  --box-button-gradient-2: #C19A73;
   --notification-red: rgba(255, 0, 0, 0.25);
   --notification-green: rgba(0, 255, 0, 0.25);
   --notification-blue: rgba(0, 0, 255, 0.25);

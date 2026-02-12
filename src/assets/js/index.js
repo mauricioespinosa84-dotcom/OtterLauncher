@@ -36,7 +36,7 @@ class Splash {
 
     async startAnimation() {
         let defaultSplashes = [
-            { "message": "Eventify Team", "author": "" }
+            { "message": "Otter Studio", "author": "" }
         ];
 
         let splashes = await this.fetchSplashes();

@@ -49,6 +49,118 @@ class Settings {
             }
         }, 100);
     }
+
+    normalizeConfigClient(configClient = {}) {
+        const normalized = (configClient && typeof configClient === 'object') ? configClient : {};
+
+        if (!normalized.java_config || typeof normalized.java_config !== 'object') {
+            normalized.java_config = {};
+        }
+        if (!normalized.java_config.java_memory || typeof normalized.java_config.java_memory !== 'object') {
+            normalized.java_config.java_memory = { min: 1, max: 2 };
+        }
+        if (normalized.java_config.java_memory.min === undefined || normalized.java_config.java_memory.min === null) {
+            normalized.java_config.java_memory.min = 1;
+        }
+        if (normalized.java_config.java_memory.max === undefined || normalized.java_config.java_memory.max === null) {
+            normalized.java_config.java_memory.max = 2;
+        }
+        if (!Object.prototype.hasOwnProperty.call(normalized.java_config, 'java_path')) {
+            normalized.java_config.java_path = null;
+        }
+
+        if (!normalized.game_config || typeof normalized.game_config !== 'object') {
+            normalized.game_config = {};
+        }
+        if (!normalized.game_config.screen_size || typeof normalized.game_config.screen_size !== 'object') {
+            normalized.game_config.screen_size = { width: 854, height: 480 };
+        }
+        if (normalized.game_config.screen_size.width === undefined || normalized.game_config.screen_size.width === null || normalized.game_config.screen_size.width === '') {
+            normalized.game_config.screen_size.width = 854;
+        }
+        if (normalized.game_config.screen_size.height === undefined || normalized.game_config.screen_size.height === null || normalized.game_config.screen_size.height === '') {
+            normalized.game_config.screen_size.height = 480;
+        }
+
+        if (!normalized.launcher_config || typeof normalized.launcher_config !== 'object') {
+            normalized.launcher_config = {};
+        }
+        if (!normalized.launcher_config.closeLauncher) {
+            normalized.launcher_config.closeLauncher = "close-launcher";
+        }
+        if (typeof normalized.launcher_config.performance_mode !== 'boolean') {
+            normalized.launcher_config.performance_mode = false;
+        }
+
+        return normalized;
+    }
+
+    async getConfigClientSafe() {
+        const configClient = await this.db.readData('configClient');
+        return this.normalizeConfigClient(configClient || {});
+    }
+
+    sanitizeResolutionValue(value, fallback) {
+        const parsed = parseInt(value, 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+            return parsed;
+        }
+        return Number.isFinite(Number(fallback)) && Number(fallback) > 0 ? Number(fallback) : 854;
+    }
+
+    parseRamDisplayValue(value, fallback) {
+        const parsed = parseFloat(String(value || '').replace(/[^\d.]/g, ''));
+        if (Number.isFinite(parsed) && parsed > 0) {
+            return parsed;
+        }
+        return Number.isFinite(Number(fallback)) && Number(fallback) > 0 ? Number(fallback) : 1;
+    }
+
+    async persistSettingsBeforeExit() {
+        const configClient = await this.getConfigClientSafe();
+
+        const widthInput = document.querySelector(".width-size");
+        const heightInput = document.querySelector(".height-size");
+        if (widthInput) {
+            const widthValue = this.sanitizeResolutionValue(widthInput.value, configClient.game_config.screen_size.width);
+            widthInput.value = String(widthValue);
+            configClient.game_config.screen_size.width = widthValue;
+        }
+        if (heightInput) {
+            const heightValue = this.sanitizeResolutionValue(heightInput.value, configClient.game_config.screen_size.height);
+            heightInput.value = String(heightValue);
+            configClient.game_config.screen_size.height = heightValue;
+        }
+
+        const selectedBehavior = document.querySelector('.launcher-behavior-option.selected');
+        if (selectedBehavior && selectedBehavior.dataset.value) {
+            configClient.launcher_config.closeLauncher = selectedBehavior.dataset.value;
+        }
+
+        const performanceModeCheckbox = document.querySelector(".performance-mode-checkbox");
+        if (performanceModeCheckbox) {
+            configClient.launcher_config.performance_mode = performanceModeCheckbox.checked === true;
+        }
+
+        const javaPathInputTxt = document.querySelector(".java-path-input-text");
+        if (javaPathInputTxt) {
+            const javaPathValue = String(javaPathInputTxt.value || '').trim();
+            const launcherJavaText = localization.t('java.java_path_launcher');
+            configClient.java_config.java_path = (javaPathValue && javaPathValue !== launcherJavaText) ? javaPathValue : null;
+        }
+
+        const ramMinLabel = document.querySelector('.memory-slider .slider-touch-left span');
+        const ramMaxLabel = document.querySelector('.memory-slider .slider-touch-right span');
+        let ramMin = this.parseRamDisplayValue(ramMinLabel?.getAttribute('value'), configClient.java_config.java_memory.min);
+        let ramMax = this.parseRamDisplayValue(ramMaxLabel?.getAttribute('value'), configClient.java_config.java_memory.max);
+        if (ramMax - ramMin < 2) {
+            ramMax = ramMin + 2;
+        }
+        configClient.java_config.java_memory.min = ramMin;
+        configClient.java_config.java_memory.max = ramMax;
+
+        await this.db.updateData('configClient', configClient);
+    }
     
     // Ensure the "Add Account" button is displayed
     ensureAddAccountButton() {
@@ -282,7 +394,7 @@ class Settings {
     }
 
     navBTN() {
-        document.querySelector('.nav-box').addEventListener('click', e => {
+        document.querySelector('.nav-box').addEventListener('click', async e => {
             if (e.target.classList.contains('nav-settings-btn')) {
                 let id = e.target.id;
                 let activeSettingsBTN = document.querySelector('.active-settings-BTN');
@@ -290,6 +402,12 @@ class Settings {
                 const performanceMode = isPerformanceModeEnabled();
 
                 if (id == 'save') {
+                    try {
+                        await this.persistSettingsBeforeExit();
+                    } catch (error) {
+                        console.error('Error guardando configuración antes de salir:', error);
+                    }
+
                     if (activeSettingsBTN) activeSettingsBTN.classList.toggle('active-settings-BTN');
                     document.querySelector('#account').classList.add('active-settings-BTN');
 
@@ -714,7 +832,7 @@ class Settings {
     }
 
     async ram() {
-        let config = await this.db.readData('configClient');
+        let config = await this.getConfigClientSafe();
         let totalMem = Math.trunc(os.totalmem() / 1073741824 * 10) / 10;
         let freeMem = Math.trunc(os.freemem() / 1073741824 * 10) / 10;
 
@@ -725,13 +843,13 @@ class Settings {
         sliderDiv.setAttribute("max", Math.trunc((80 * totalMem) / 100));
 
         let ram = config?.java_config?.java_memory ? {
-            ramMin: config.java_config.java_memory.min,
-            ramMax: config.java_config.java_memory.max
+            ramMin: Number(config.java_config.java_memory.min) || 1,
+            ramMax: Number(config.java_config.java_memory.max) || 2
         } : { ramMin: "1", ramMax: "2" };
 
-        if (totalMem < ram.ramMin) {
+        if (totalMem < Number(ram.ramMin)) {
             config.java_config.java_memory = { min: 1, max: 2 };
-            this.db.updateData('configClient', config);
+            await this.db.updateData('configClient', config);
             ram = { ramMin: "1", ramMax: "2" }
         };
 
@@ -878,9 +996,9 @@ class Settings {
         
         // Set up the slider callback to update the config
         settingsSlider.on('change', async (min, max) => {
-            let config = await this.db.readData('configClient');
+            let config = await this.getConfigClientSafe();
             config.java_config.java_memory = { min: min, max: max };
-            this.db.updateData('configClient', config);
+            await this.db.updateData('configClient', config);
         });
     }
 
@@ -902,7 +1020,7 @@ class Settings {
             }
         }
 
-        let configClient = await this.db.readData('configClient')
+        let configClient = await this.getConfigClientSafe()
         let javaPath = configClient?.java_config?.java_path || localization.t('java.java_path_launcher');
         let javaPathInputTxt = document.querySelector(".java-path-input-text");
         let javaPathInputFile = document.querySelector(".java-path-input-file");
@@ -931,7 +1049,7 @@ class Settings {
                 });
 
                 if (javaPathInputFile.value.replace(".exe", '').endsWith("java") || javaPathInputFile.value.replace(".exe", '').endsWith("javaw")) {
-                    let configClient = await this.db.readData('configClient')
+                    let configClient = await this.getConfigClientSafe()
                     let file = javaPathInputFile.files[0].path;
                     if (javaPathInputTxt) {
                         javaPathInputTxt.value = file;
@@ -947,7 +1065,7 @@ class Settings {
 
         if (javaPathResetBtn) {
             javaPathResetBtn.addEventListener("click", async () => {
-                let configClient = await this.db.readData('configClient')
+                let configClient = await this.getConfigClientSafe()
                 if (javaPathInputTxt) {
                     javaPathInputTxt.value = localization.t('java.java_path_launcher');
                 }
@@ -1387,31 +1505,35 @@ class Settings {
      * Realiza un escaneo completo y profundo de las instalaciones de Java
      */
     async resolution() {
-        let configClient = await this.db.readData('configClient')
-        let resolution = configClient?.game_config?.screen_size || { width: 1920, height: 1080 };
+        let configClient = await this.getConfigClientSafe()
+        let resolution = configClient?.game_config?.screen_size || { width: 854, height: 480 };
 
         let width = document.querySelector(".width-size");
         let height = document.querySelector(".height-size");
         let resolutionReset = document.querySelector(".size-reset");
 
-        width.value = resolution.width;
-        height.value = resolution.height;
+        width.value = this.sanitizeResolutionValue(resolution.width, 854);
+        height.value = this.sanitizeResolutionValue(resolution.height, 480);
 
         width.addEventListener("change", async () => {
-            let configClient = await this.db.readData('configClient')
-            configClient.game_config.screen_size.width = width.value;
+            let configClient = await this.getConfigClientSafe()
+            const widthValue = this.sanitizeResolutionValue(width.value, configClient.game_config.screen_size.width);
+            width.value = String(widthValue);
+            configClient.game_config.screen_size.width = widthValue;
             await this.db.updateData('configClient', configClient);
         })
 
         height.addEventListener("change", async () => {
-            let configClient = await this.db.readData('configClient')
-            configClient.game_config.screen_size.height = height.value;
+            let configClient = await this.getConfigClientSafe()
+            const heightValue = this.sanitizeResolutionValue(height.value, configClient.game_config.screen_size.height);
+            height.value = String(heightValue);
+            configClient.game_config.screen_size.height = heightValue;
             await this.db.updateData('configClient', configClient);
         })
 
         resolutionReset.addEventListener("click", async () => {
-            let configClient = await this.db.readData('configClient')
-            configClient.game_config.screen_size = { width: '854', height: '480' };
+            let configClient = await this.getConfigClientSafe()
+            configClient.game_config.screen_size = { width: 854, height: 480 };
             width.value = '854';
             height.value = '480';
             await this.db.updateData('configClient', configClient);
@@ -1419,15 +1541,15 @@ class Settings {
     }
 
     async launcher() {
-        let configClient = await this.db.readData('configClient');
+        let configClient = await this.getConfigClientSafe();
 
         const performanceModeCheckbox = document.querySelector(".performance-mode-checkbox");
         if (performanceModeCheckbox) {
-            let configClient = await this.db.readData('configClient');
+            let configClient = await this.getConfigClientSafe();
             performanceModeCheckbox.checked = configClient?.launcher_config?.performance_mode || false;
             
             performanceModeCheckbox.addEventListener("change", async () => {
-                let configClient = await this.db.readData('configClient');
+                let configClient = await this.getConfigClientSafe();
                 configClient.launcher_config.performance_mode = performanceModeCheckbox.checked;
                 await this.db.updateData('configClient', configClient);
                 
@@ -1462,7 +1584,7 @@ class Settings {
                 
                 option.classList.add('selected');
                 
-                let configClient = await this.db.readData('configClient');
+                let configClient = await this.getConfigClientSafe();
                 configClient.launcher_config.closeLauncher = option.dataset.value;
                 await this.db.updateData('configClient', configClient);
             });
@@ -2032,10 +2154,7 @@ class Settings {
                     await localization.changeLanguage(targetLanguage);
                     
                     // Guardar configuración
-                    let configClient = await this.db.readData('configClient');
-                    if (!configClient) {
-                        configClient = {};
-                    }
+                    let configClient = await this.getConfigClientSafe();
                     configClient.language = selectedLanguage;
                     await this.db.updateData('configClient', configClient);
                     

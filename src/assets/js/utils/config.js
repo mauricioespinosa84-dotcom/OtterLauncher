@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @author Luuxis
  * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
@@ -11,14 +11,13 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const hwid = machineIdSync();
-import { getLauncherKey } from '../MKLib.js';
 
 let url = pkg.user ? `${pkg.url}/${pkg.user}` : pkg.url
 let key;
 
 let news = `${url}/launcher/news-launcher/news.json`;
 
-// Función local getLauncherKey para compatibilidad hacia atrás con getInstanceList
+// FunciÃ³n local getLauncherKey para compatibilidad hacia atrÃ¡s con getInstanceList
 async function getLocalLauncherKey() {
     if (!key) {
       const files = [
@@ -39,10 +38,41 @@ async function getLocalLauncherKey() {
 let Launcherkey = await getLocalLauncherKey();
 
 class Config {
+    sanitizeJsonText(text) {
+        if (!text || typeof text !== 'string') return '';
+        // Trim whitespace and strip UTF-8 BOM if present
+        return text.trim().replace(/^\uFEFF/, '');
+    }
+
+    safeParseJson(text) {
+        const cleaned = this.sanitizeJsonText(text);
+        if (!cleaned) throw new Error('EMPTY_RESPONSE');
+
+        try {
+            return JSON.parse(cleaned);
+        } catch (jsonError) {
+            // Attempt to recover if JSON is wrapped as a string
+            try {
+                const firstPass = JSON.parse(cleaned);
+                if (typeof firstPass === 'string') {
+                    return JSON.parse(this.sanitizeJsonText(firstPass));
+                }
+                return firstPass;
+            } catch {
+                // Attempt to recover if there is leading garbage before JSON
+                const startIndex = cleaned.search(/[\{\[]/);
+                if (startIndex > 0) {
+                    const sliced = cleaned.slice(startIndex);
+                    return JSON.parse(sliced);
+                }
+                throw jsonError;
+            }
+        }
+    }
     async GetConfig() {
         const baseUrl = (pkg.url || '').trim();
         if (!baseUrl) {
-            return { error: { code: 'CONFIG_URL_MISSING', message: 'pkg.url no está configurado' } };
+            return { error: { code: 'CONFIG_URL_MISSING', message: 'pkg.url no estÃ¡ configurado' } };
         }
 
         const configUrl = `${baseUrl.replace(/\/$/, '')}/launcher/config.json`;
@@ -67,7 +97,7 @@ class Config {
             }
 
             try {
-                return JSON.parse(responseText);
+                return this.safeParseJson(responseText);
             } catch (jsonError) {
                 return { error: { code: 'JSON_PARSE_ERROR', message: jsonError.message } };
             }
@@ -238,7 +268,7 @@ class Config {
                             if (!responseText || responseText.trim() === '') {
                                 return reject({ error: { code: 'EMPTY_RESPONSE', message: 'Empty response from server' } });
                             }
-                            const jsonData = JSON.parse(responseText);
+                            const jsonData = this.safeParseJson(responseText);
                             return resolve(jsonData);
                         } catch (jsonError) {
                             return reject({ error: { code: 'JSON_PARSE_ERROR', message: jsonError.message } });
@@ -254,3 +284,6 @@ class Config {
 }
 
 export default new Config;
+
+
+

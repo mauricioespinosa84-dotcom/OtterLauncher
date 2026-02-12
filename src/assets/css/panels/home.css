@@ -231,6 +231,20 @@
     padding: 0;
 }
 
+.header-text--changelog {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.changelog-logo {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 6px;
+    flex: 0 0 auto;
+}
+
 .header-text .titleshop {
     font-size: 1.4rem; /* Reducido de 1.8rem */
     text-align: center;

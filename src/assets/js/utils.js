@@ -232,7 +232,9 @@ function isImageUrl(url) {
   
   // Verificar extensiones comunes de imágenes
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
-  const lowerUrl = url.toLowerCase();
+  const cleanUrl = url.split('?')[0].split('#')[0];
+  const lowerUrl = cleanUrl.toLowerCase();
+  const lowerFullUrl = url.toLowerCase();
   
   // Si la URL termina con una extensión de imagen, es una imagen
   if (imageExtensions.some(ext => lowerUrl.endsWith(ext))) {
@@ -241,11 +243,11 @@ function isImageUrl(url) {
   
   // Comprobar si contiene parámetros que indican que es una imagen
   // Por ejemplo: imagen.php?type=jpg o cloudinary/image/upload
-  if (lowerUrl.includes('image/') || 
-      lowerUrl.includes('/img/') || 
-      lowerUrl.includes('=jpg') || 
-      lowerUrl.includes('=png') ||
-      lowerUrl.includes('=webp')) {
+  if (lowerFullUrl.includes('image/') || 
+      lowerFullUrl.includes('/img/') || 
+      lowerFullUrl.includes('=jpg') || 
+      lowerFullUrl.includes('=png') ||
+      lowerFullUrl.includes('=webp')) {
     return true;
   }
   
@@ -1030,7 +1032,8 @@ async function clickableHead(account) {
     // Siempre habilitar el clic en la cabeza del jugador
     playerHead.style.cursor = 'pointer';
     playerHead.classList.add('hoverenabled');
-    playerHeadFrame.classList.add('border-animation');
+    // Quitar borde animado (arcoiris) para mostrar solo la cabeza
+    playerHeadFrame.classList.remove('border-animation');
 }
 
 async function getClickeableHead() {
@@ -1065,6 +1068,12 @@ async function setStatus(opt) {
             !iconSource.startsWith('assets/')) {
             const baseUrl = (pkg.url || '').replace(/\/$/, '')
             if (baseUrl) iconSource = `${baseUrl}/${iconSource.replace(/^\/+/, '')}`
+        }
+
+        const cacheVersion = localStorage.getItem('cacheVersion');
+        if (cacheVersion && !iconSource.startsWith('data:') && !iconSource.startsWith('file:')) {
+            const separator = iconSource.includes('?') ? '&' : '?';
+            iconSource = `${iconSource}${separator}v=${encodeURIComponent(cacheVersion)}`;
         }
     }
     instanceIcon.src = iconSource

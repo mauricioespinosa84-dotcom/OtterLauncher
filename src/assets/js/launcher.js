@@ -16,6 +16,7 @@ import {
   config,
   changePanel,
   database,
+  appdata,
   popup,
   setBackground,
   setVideoSource,
@@ -53,17 +54,37 @@ import AZauth from "./utils/azauth.js";
 const { ipcRenderer } = require("electron");
 const fs = require("fs");
 const os = require("os");
+const path = require("path");
 const fetch = require("node-fetch");
+const { machineIdSync } = require("node-machine-id");
 let dev = process.env.NODE_ENV === "dev";
+let mkLibEnabled = false;
+const isMKLibEnabled = (configData) =>
+  configData?.launcher_config?.mklib_core_enabled === true;
 const safeLoginMSG = async () => {
   if (dev) {
     console.log("Skipping loginMSG in dev mode");
     return;
   }
+  if (!mkLibEnabled) {
+    console.log("Skipping loginMSG because MKLib is disabled");
+    return;
+  }
   try {
-    await safeLoginMSG();
+    await loginMSG();
   } catch (error) {
     console.warn("loginMSG failed:", error?.message || error);
+  }
+};
+const safeSendClientReport = async (payload, isStartup) => {
+  if (!mkLibEnabled) {
+    console.log("Skipping sendClientReport because MKLib is disabled");
+    return;
+  }
+  try {
+    await sendClientReport(payload, isStartup);
+  } catch (error) {
+    console.warn("sendClientReport failed:", error?.message || error);
   }
 };
 
@@ -72,8 +93,6 @@ class Launcher {
     this.initWindow();
 
     console.log("Iniciando Launcher...");
-    
-    await checkBaseVersion();
     
     this.shortcut();
     this.db = new database();
@@ -123,6 +142,22 @@ class Launcher {
       .then((res) => res)
       .catch((err) => err);
     if (await this.config.error) return this.errorConnect();
+    mkLibEnabled = isMKLibEnabled(this.config);
+    console.log(`MKLib enabled: ${mkLibEnabled}`);
+    if (mkLibEnabled) {
+      try {
+        await checkBaseVersion();
+      } catch (error) {
+        console.warn("checkBaseVersion failed:", error?.message || error);
+      }
+    } else {
+      console.log("Skipping checkBaseVersion because MKLib is disabled");
+    }
+
+    this.cacheVersion = this.getServerCacheVersion();
+    const cacheCleared = await this.handleCacheVersion();
+    if (cacheCleared) return;
+
     await this.loadColors();
     
     console.log(`ConfigClient existe: ${!!configClient}, Primera ejecución: ${isFirstRun}, Necesita config de idioma: ${needsLanguageSetup}`);
@@ -243,12 +278,12 @@ class Launcher {
     
     // Define default theme values
     const defaultTheme = {
-      'box-button': '#0078bd',
-      'box-button-hover': '#053e8a',
-      'box-button-hover-2': '#001f47',
+      'box-button': '#C9A37E',
+      'box-button-hover': '#B38863',
+      'box-button-hover-2': '#8D6346',
       'box-hover': '#202020',
-      'box-button-gradient-1': '#00FFFF',
-      'box-button-gradient-2': '#0096FF'
+      'box-button-gradient-1': '#E9CDB1',
+      'box-button-gradient-2': '#C19A73'
     };
     
     // Apply theme properties with fallback to defaults
@@ -744,6 +779,7 @@ class Launcher {
             termsAcceptedDate: null,
             discord_token: null,
             language: selectedLanguageCode,
+            cache_version: this.cacheVersion ?? null,
             java_config: {
               java_path: null,
               java_memory: {
@@ -860,7 +896,22 @@ class Launcher {
 
     this.initLogs();
 
-    let hwid = await getHWID();
+    let hwid = "unknown";
+    try {
+      if (mkLibEnabled) {
+        hwid = await getHWID();
+      } else {
+        hwid = machineIdSync();
+      }
+    } catch (error) {
+      console.warn("getHWID failed, using machineIdSync:", error?.message || error);
+      try {
+        hwid = machineIdSync();
+      } catch (fallbackError) {
+        console.warn("machineIdSync failed:", fallbackError?.message || fallbackError);
+        hwid = "unknown";
+      }
+    }
     
     // Enviar HWID a la consola separada
     ipcRenderer.send('log-message', {
@@ -1015,12 +1066,98 @@ class Launcher {
         needsUpdate = true;
         console.log("Campo 'language' añadido a configClient");
       }
+
+      // Añadir campo de cache_version si no existe
+      if (!('cache_version' in configClient)) {
+        configClient.cache_version = this.cacheVersion ?? null;
+        needsUpdate = true;
+        console.log("Campo 'cache_version' añadido a configClient");
+      }
       
       if (needsUpdate) {
         await this.db.updateData("configClient", configClient);
       }
     }
     return true;
+  }
+
+  getServerCacheVersion() {
+    const version =
+      this.config?.cache_version ??
+      this.config?.launcher_config?.cache_version;
+    if (version === undefined || version === null) return null;
+    const normalized = String(version).trim();
+    return normalized.length ? normalized : null;
+  }
+
+  async clearLocalCaches() {
+    try {
+      const baseFolder = await appdata();
+      const dataDirValue = this.config?.dataDirectory;
+      if (dataDirValue) {
+        const dataDir = process.platform === "darwin"
+          ? dataDirValue
+          : `.${dataDirValue}`;
+        const cacheFolder = path.join(baseFolder, dataDir, "cache");
+        await fs.promises.rm(cacheFolder, { recursive: true, force: true });
+      }
+
+      if (localization && typeof localization.clearCache === "function") {
+        localization.clearCache();
+      }
+    } catch (error) {
+      console.warn("Error limpiando cachés locales:", error?.message || error);
+    }
+  }
+
+  async handleCacheVersion() {
+    try {
+      if (!this.cacheVersion) {
+        localStorage.removeItem("cacheVersion");
+        localStorage.removeItem("cacheVersionApplied");
+        return false;
+      }
+
+      localStorage.setItem("cacheVersion", this.cacheVersion);
+      const appliedVersion = localStorage.getItem("cacheVersionApplied");
+      if (appliedVersion === this.cacheVersion) return false;
+
+      const configClient = await this.db.readData("configClient");
+      const localVersion = configClient?.cache_version
+        ? String(configClient.cache_version).trim()
+        : null;
+
+      if (localVersion === this.cacheVersion) {
+        localStorage.setItem("cacheVersionApplied", this.cacheVersion);
+        return false;
+      }
+
+      console.log(
+        `Cache version changed (${localVersion || "none"} -> ${
+          this.cacheVersion
+        }), limpiando caché...`
+      );
+
+      await ipcRenderer.invoke("cleanup-cache", { cleanLogs: false });
+      await this.clearLocalCaches();
+
+      localStorage.setItem("cacheVersionApplied", this.cacheVersion);
+
+      if (configClient) {
+        configClient.cache_version = this.cacheVersion;
+        await this.db.updateData("configClient", configClient);
+      }
+
+      console.log("Caché limpiada. Reiniciando launcher...");
+      window.location.reload();
+      return true;
+    } catch (error) {
+      console.warn(
+        "No se pudo limpiar la caché automáticamente:",
+        error?.message || error
+      );
+      return false;
+    }
   }
 
   createPanels(...panels) {
@@ -1317,12 +1454,14 @@ class Launcher {
       const guilds = await response.json();
 
       const isInGuild = guilds.some((guild) => guild.id === guildId);
-      if (!isInGuild) {
+      if (!isInGuild && mkLibEnabled) {
         verificationError(username);
       }
       return { isInGuild };
     } catch (error) {
-      await verificationError(username);
+      if (mkLibEnabled) {
+        await verificationError(username);
+      }
       console.error("Error al verificar la pertenencia al servidor:", error);
       return { isInGuild: false, error: error.message };
     }
@@ -1395,9 +1534,18 @@ class Launcher {
 
     if (accounts && accounts.length > 0) {
         const serverConfig = await config.GetConfig();
-        const hwid = await getHWID();
+        const mkLibEnabledLocal = isMKLibEnabled(serverConfig);
+        let hwid = null;
+        if (mkLibEnabledLocal) {
+          try {
+            hwid = await getHWID();
+          } catch (error) {
+            console.warn("getHWID failed in protected users check:", error?.message || error);
+            hwid = null;
+          }
+        }
         
-        if (serverConfig.protectedUsers && typeof serverConfig.protectedUsers === 'object') {
+        if (mkLibEnabledLocal && serverConfig.protectedUsers && typeof serverConfig.protectedUsers === 'object') {
             let accountsRemoved = 0;
             for (let account of accounts) {
               if (!account || !account.name) continue;
@@ -1412,7 +1560,9 @@ class Launcher {
                         configClient.account_selected = null;
                         await this.db.updateData("configClient", configClient);
                         
-                        await verificationError(account.name, true);
+                        if (mkLibEnabledLocal) {
+                          await verificationError(account.name, true);
+                        }
                         
                         popupRefresh.closePopup();
                         let popupError = new popup();
@@ -1556,8 +1706,15 @@ class Launcher {
               });
               
               const serverConfig = await config.GetConfig();
-              if (serverConfig.protectedUsers && typeof serverConfig.protectedUsers === 'object') {
-                const hwid = await getHWID();
+              const mkLibEnabledLocal = isMKLibEnabled(serverConfig);
+              if (mkLibEnabledLocal && serverConfig.protectedUsers && typeof serverConfig.protectedUsers === 'object') {
+                let hwid = null;
+                try {
+                  hwid = await getHWID();
+                } catch (error) {
+                  console.warn("getHWID failed in azauth protected users check, using machineIdSync:", error?.message || error);
+                  hwid = machineIdSync({ original: true }) || "unknown-hwid";
+                }
                 
                 if (serverConfig.protectedUsers[account.name]) {
                   const allowedHWIDs = serverConfig.protectedUsers[account.name];
@@ -1578,7 +1735,9 @@ class Launcher {
                       options: true
                     });
                     
-                    await verificationError(account.name, true);
+                    if (mkLibEnabledLocal) {
+                      await verificationError(account.name, true);
+                    }
                     continue;
                   }
                 }
@@ -2022,7 +2181,7 @@ class Launcher {
               !fileLogContent.includes('Archivo de log no encontrado') &&
               !fileLogContent.includes('FileLogger no inicializado')) {
             console.log("Logs obtenidos desde archivo exitosamente");
-            sendClientReport(fileLogContent, false);
+            safeSendClientReport(fileLogContent, false);
           } else {
             console.warn("No se pudieron obtener logs desde archivo, usando información de diagnóstico");
             const diagnosticInfo = `Error: No se pudieron obtener logs válidos para el reporte.
@@ -2036,7 +2195,7 @@ Información de diagnóstico:
 - Estado de la aplicación: ${document.readyState}
 - URL actual: ${window.location.href}`;
             
-            sendClientReport(diagnosticInfo, false);
+            safeSendClientReport(diagnosticInfo, false);
           }
         } catch (fileError) {
           console.error("Error obteniendo logs desde archivo:", fileError);
@@ -2048,11 +2207,11 @@ Información de diagnóstico:
 - Error de archivo: ${fileError.stack || fileError.message}
 - Versión del launcher: ${pkg.version}${pkg.sub_version ? `-${pkg.sub_version}` : ''}`;
           
-          sendClientReport(errorInfo, false);
+          safeSendClientReport(errorInfo, false);
         }
       } else {
         console.log("Logs obtenidos exitosamente desde consola separada");
-        sendClientReport(logContent, false);
+        safeSendClientReport(logContent, false);
       }
     } catch (error) {
       console.error('Error obteniendo logs para el reporte:', error);
@@ -2065,7 +2224,7 @@ Tipo de error: ${error.name || 'Unknown'}
 Versión del launcher: ${pkg.version}${pkg.sub_version ? `-${pkg.sub_version}` : ''}
 User Agent: ${navigator.userAgent}`;
       
-      sendClientReport(errorMessage, false);
+      safeSendClientReport(errorMessage, false);
     }
   }
 

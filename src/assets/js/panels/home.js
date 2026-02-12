@@ -41,6 +41,7 @@ import MinecraftStatus from "../utils/minecraft-status.js";
 const path = require("node:path");
 const fs = require("node:fs");
 const crypto = require("node:crypto");
+const { machineIdSync } = require("node-machine-id");
 
 const clientId = pkg.discord_client_id;
 const DiscordRPC = require("discord-rpc");
@@ -52,6 +53,9 @@ let LogBan = false;
 let playing = false;
 let username;
 DiscordRPC.register(clientId);
+
+const isMKLibEnabled = (configData) =>
+	configData?.launcher_config?.mklib_core_enabled === true;
 
 async function setActivity() {
 	if (!RPC) return;
@@ -89,6 +93,7 @@ class Home {
 	async init(config) {
 		this.config = config;
 		this.db = new database();
+		this.mkLibEnabled = isMKLibEnabled(this.config);
 
 		await cleanupManager.initialize();
 
@@ -120,6 +125,29 @@ class Home {
 				localization.forceApplyTranslations();
 			}
 		}, 100);
+	}
+
+	async removeMKCoreMods(instanceModsPath) {
+		try {
+			if (!fs.existsSync(instanceModsPath)) return;
+			const files = fs.readdirSync(instanceModsPath);
+			let removed = 0;
+			for (const file of files) {
+				if (file.startsWith("MiguelkiNetworkMCCore") && (file.endsWith(".jar") || file.endsWith(".disabled"))) {
+					try {
+						fs.unlinkSync(path.join(instanceModsPath, file));
+						removed++;
+					} catch (err) {
+						console.warn(`No se pudo eliminar ${file}: ${err?.message || err}`);
+					}
+				}
+			}
+			if (removed > 0) {
+				console.log(`MKCore: eliminados ${removed} archivo(s) en ${instanceModsPath}`);
+			}
+		} catch (error) {
+			console.warn(`MKCore: error limpiando mods: ${error?.message || error}`);
+		}
 	}
 
 	async showstore() {
@@ -174,8 +202,10 @@ class Home {
 		const notificationConfig = res && typeof res === 'object' && res.notification ? res.notification : { enabled: false };
 		let check = false;
 		let fetchError = false;
-		const hwid = dev ? "dev" : await getHWID();
-		if (!dev) {
+		const mkLibEnabled = isMKLibEnabled(res);
+		let hwid = "dev";
+		if (mkLibEnabled && !dev) {
+			hwid = await getHWID();
 			check = await checkHWID(hwid);
 			fetchError = await getFetchError();
 		}
@@ -562,7 +592,8 @@ class Home {
 				// Verificar si hay bloqueo de dispositivo u otros errores
 				let check = false;
 				let fetchError = false;
-				if (!dev) {
+				const mkLibEnabled = this.mkLibEnabled;
+				if (mkLibEnabled && !dev) {
 					let hwid = await getHWID();
 					check = await checkHWID(hwid);
 					fetchError = await getFetchError();
@@ -622,11 +653,12 @@ class Home {
 						let visibleInstanceCount = 0;
 
 						for (let instance of refreshedInstancesList) {
-							let color = instance.maintenance ? "red" : "green";
+							let color = instance.maintenance ? "red" : (instance.incoming ? "orange" : "green");
 							let whitelist =
 								instance.whitelistActive && instance.whitelist.includes(username);
 							let imageUrl =
-								instance.thumbnail || "assets/images/default/placeholder.jpg";
+								this.resolveInstanceAssetUrl(instance.thumbnail) ||
+								"assets/images/default/placeholder.jpg";
 							if (!instance.whitelistActive || whitelist) {
 								instancesGrid.innerHTML += `
 								<div id="${
@@ -694,6 +726,17 @@ class Home {
 						MinecraftStatus.clearCache();
 					}
 
+					let instance = await config.getInstanceList();
+					let options = instance.find(
+						(i) => i.name == newInstanceSelect
+					);
+
+					const blockInfo = this.getInstanceBlockInfo(options);
+					if (blockInfo.blocked) {
+						this.showInstanceBlockedPopup(blockInfo);
+						return;
+					}
+
 					if (activeInstanceSelect)
 						activeInstanceSelect.classList.remove("active-instance");
 					e.target
@@ -705,10 +748,6 @@ class Home {
 					instanceSelect = newInstanceSelect;
 					instancePopup.classList.remove("show");
 					this.notification();
-					let instance = await config.getInstanceList();
-					let options = instance.find(
-						(i) => i.name == configClient.instance_selct
-					);
 					setStatus(options);
 					setBackgroundMusic(options.backgroundMusic);
 					const performanceMode = isPerformanceModeEnabled();
@@ -759,8 +798,53 @@ class Home {
 		playInstanceBTN.style.opacity = "1";
 	}
 
+	getInstanceBlockInfo(instance) {
+		if (!instance) return { blocked: false };
+
+		if (instance.maintenance) {
+			const message =
+				(instance.maintenancemsg && String(instance.maintenancemsg).trim()) ||
+				(localization?.t && localization.t("home.instance_maintenance")) ||
+				"Esta instancia está en mantenimiento.";
+			return { blocked: true, status: "maintenance", message };
+		}
+
+		if (instance.incoming) {
+			const message =
+				(instance.incomingmsg && String(instance.incomingmsg).trim()) ||
+				(localization?.t && localization.t("home.instance_incoming")) ||
+				"Esta instancia estará disponible próximamente.";
+			return { blocked: true, status: "incoming", message };
+		}
+
+		return { blocked: false };
+	}
+
+	showInstanceBlockedPopup(blockInfo) {
+		const popupError = new popup();
+		popupError.openPopup({
+			title:
+				(localization?.t && localization.t("home.game_launch_error")) ||
+				"Instancia no disponible",
+			content: blockInfo?.message || "Instancia no disponible.",
+			color: "red",
+			options: true,
+		});
+	}
+
 	async startGame() {
 		let musicPlaying = true;
+		const mkLibEnabled = this.mkLibEnabled;
+		let hwid = dev ? "dev" : null;
+		const queueEnabled =
+			this.config?.launcher_config?.queue_enabled === true ||
+			this.config?.queue_enabled === true;
+		const skipQueue =
+			dev ||
+			!queueEnabled ||
+			(pkg?.url &&
+				typeof pkg.url === "string" &&
+				pkg.url.includes("github.io"));
 		
 		try {
 			let configClient = await this.db.readData("configClient");
@@ -881,10 +965,19 @@ class Home {
 
 		let check = false;
 		let fetchError = false;
-		if (!dev) {
-			let hwid = await getHWID();
+		if (mkLibEnabled && !dev) {
+			hwid = await getHWID();
 			check = await checkHWID(hwid);
 			fetchError = await getFetchError();
+		}
+
+		if (!dev && queueEnabled && !hwid) {
+			try {
+				hwid = mkLibEnabled ? await getHWID() : machineIdSync();
+			} catch (error) {
+				console.warn("getHWID failed for queue, using machineIdSync:", error?.message || error);
+				hwid = machineIdSync();
+			}
 		}
 
 		if (check) {
@@ -958,24 +1051,12 @@ ${error.message}`,
 		let progressBar = document.querySelector(".progress-bar");
 		let closeGameButton = document.querySelector(".force-close-button");
 
-		if (options.maintenance) {
+		const blockInfo = this.getInstanceBlockInfo(options);
+		if (blockInfo.blocked) {
 			this.enablePlayButton();
-			let popupError = new popup();
-			if (options.maintenancemsg == "") {
-				popupError.openPopup({
-					title: localization.t('home.game_launch_error'),
-					content: localization.t('home.instance_maintenance'),
-					color: "red",
-					options: true,
-				});
-			} else {
-				popupError.openPopup({
-					title: localization.t('home.game_launch_error'),
-					content: options.maintenancemsg,
-					color: "red",
-					options: true,
-				});
-			}
+			this.showInstanceBlockedPopup(blockInfo);
+			const instancePopup = document.querySelector(".instance-popup");
+			if (instancePopup) instancePopup.classList.add("show");
 			return;
 		}
 
@@ -1007,7 +1088,7 @@ ${error.message}`,
 		this.hideSubProgressBar();
 
 		try {
-			const queueResult = dev
+			const queueResult = skipQueue
 				? { cancelled: false }
 				: await this.checkQueueStatus(hwid, username);
 			if (queueResult.cancelled) {
@@ -1086,19 +1167,28 @@ ${error.message}`,
 
 			/* await hideFolder(instanceModsPath); */
 
-			const installResult = await installMKLibMods(
-				options.name,
-				minecraftVersion,
-				loaderType
-			);
+		const mkCoreEnabled =
+			options?.mklib_core_enabled === true &&
+			this.config?.launcher_config?.mklib_core_enabled === true;
 
-			if (installResult.success && installResult.modFile) {
-				if (!ignoredFiles.includes(installResult.modFile)) {
-					ignoredFiles.push(installResult.modFile);
+			if (!mkCoreEnabled) {
+				console.log("MKCore desactivado por configuración, eliminando mod si existe...");
+				await this.removeMKCoreMods(instanceModsPath);
+			} else {
+				const installResult = await installMKLibMods(
+					options.name,
+					minecraftVersion,
+					loaderType
+				);
+
+				if (installResult.success && installResult.modFile) {
+					if (!ignoredFiles.includes(installResult.modFile)) {
+						ignoredFiles.push(installResult.modFile);
+					}
 				}
-			}
 
-			await new Promise((resolve) => setTimeout(resolve, 500));
+				await new Promise((resolve) => setTimeout(resolve, 500));
+			}
 		} catch (error) {
 			console.error("Error al instalar las librerias extra:", error);
 		}
@@ -1112,6 +1202,7 @@ ${error.message}`,
 		let gameArgs = options.game_args || [];
 		const skipExecKey =
 			dev ||
+			!mkLibEnabled ||
 			(options && options.exec_key_required === false) ||
 			(pkg && typeof pkg.url === "string" && pkg.url.includes("github.io"));
 
@@ -1194,7 +1285,7 @@ ${error.message}`,
 			console.log(`Ruta de la instancia: ${instancePath}`);
 			
 			// URL de assets basada en la URL de la instancia con un endpoint fijo
-			const assetsUrl = options.url;
+			const assetsUrl = this.resolveInstanceAssetUrl(options.url);
 			console.log(`URL de assets: ${assetsUrl}`);
 			
 			// Lista de archivos ignorados para la verificación de integridad
@@ -2249,8 +2340,12 @@ ${error.message}`,
 
 			// Marcar que el juego está corriendo
 			playing = true;
-			playMSG(configClient.instance_selct);
-			removeUserFromQueue(hwid);
+			if (mkLibEnabled) {
+				playMSG(configClient.instance_selct);
+				if (hwid) {
+					removeUserFromQueue(hwid);
+				}
+			}
 
 			// Ocultar barra de progreso y mostrar estado de juego
 			this.hideProgressBar();
@@ -2406,7 +2501,9 @@ ${error.message}`,
 					largeImageText: pkg.productname,
 					instance: true,
 				}).catch();
+			if (mkLibEnabled) {
 				playquitMSG(configClient.instance_selct);
+			}
 				playing = false;
 			}
 		});
@@ -2513,7 +2610,9 @@ ${error.message}`,
 
 			if (!playing) {
 				playing = true;
-				playMSG(configClient.instance_selct);
+				if (mkLibEnabled) {
+					playMSG(configClient.instance_selct);
+				}
 				removeUserFromQueue(hwid);
 				if (configClient.launcher_config.closeLauncher == "close-launcher") {
 					ipcRenderer.send("main-window-hide");
@@ -2589,7 +2688,9 @@ ${error.message}`,
 					largeImageText: pkg.productname,
 					instance: true,
 				}).catch();
-				playquitMSG(configClient.instance_selct);
+				if (mkLibEnabled) {
+					playquitMSG(configClient.instance_selct);
+				}
 				playing = false;
 			}
 		});
@@ -3081,6 +3182,24 @@ ${error.message}`,
 						},
 					});
 
+					if (response.status === 404 || response.status === 405) {
+						console.warn(
+							`Queue API no disponible (${response.status}). Omitiendo cola.`
+						);
+						if (
+							document
+								.querySelector(".info-starting-game")
+								.contains(cancelButton)
+						) {
+							document
+								.querySelector(".info-starting-game")
+								.removeChild(cancelButton);
+						}
+						infoStarting.innerHTML = localization.t('home.preparing_launch');
+						resolve({ cancelled: false, skipped: true });
+						return;
+					}
+
 					if (!response.ok) {
 						throw new Error(`Error en la respuesta: ${response.status}`);
 					}
@@ -3371,17 +3490,6 @@ ${error.message}`,
 		if (selectInstanceBTN.disabled) return;
 
 		try {
-			let configClient = await this.db.readData("configClient");
-			const oldInstance = configClient.instance_selct;
-			configClient.instance_selct = instanceName;
-			await this.db.updateData("configClient", configClient);
-
-			// Clear MinecraftStatus cache when switching instances
-			if (oldInstance !== instanceName) {
-				console.log('Clearing server status cache due to instance change');
-				MinecraftStatus.clearCache();
-			}
-
 			let instance = await config
 				.getInstanceList()
 				.then((instances) => instances.find((i) => i.name === instanceName));
@@ -3391,6 +3499,23 @@ ${error.message}`,
 
 			if (!instance) {
 				return;
+			}
+
+			const blockInfo = this.getInstanceBlockInfo(instance);
+			if (blockInfo.blocked) {
+				this.showInstanceBlockedPopup(blockInfo);
+				return;
+			}
+
+			let configClient = await this.db.readData("configClient");
+			const oldInstance = configClient.instance_selct;
+			configClient.instance_selct = instanceName;
+			await this.db.updateData("configClient", configClient);
+
+			// Clear MinecraftStatus cache when switching instances
+			if (oldInstance !== instanceName) {
+				console.log('Clearing server status cache due to instance change');
+				MinecraftStatus.clearCache();
 			}
 
 			this.notification();
@@ -3438,24 +3563,43 @@ ${error.message}`,
 		});
 	}
 
+	getCacheVersion() {
+		const version =
+			this.config?.cache_version ??
+			this.config?.launcher_config?.cache_version ??
+			localStorage.getItem("cacheVersion");
+		if (version === undefined || version === null) return "";
+		const normalized = String(version).trim();
+		return normalized.length ? normalized : "";
+	}
+
+	appendCacheBuster(url) {
+		if (!url || typeof url !== "string") return url;
+		const cacheVersion = this.getCacheVersion();
+		if (!cacheVersion) return url;
+		if (url.startsWith("data:") || url.startsWith("file:")) return url;
+		const separator = url.includes("?") ? "&" : "?";
+		return `${url}${separator}v=${encodeURIComponent(cacheVersion)}`;
+	}
+
 	resolveInstanceAssetUrl(value) {
 		if (!value || typeof value !== "string") return "";
 		const trimmed = value.trim();
 		if (!trimmed) return "";
 
 		if (trimmed.match(/^(https?:\/\/|data:|file:)/)) {
-			return trimmed;
+			return this.appendCacheBuster(trimmed);
 		}
 
 		// Keep local assets as-is
 		if (trimmed.startsWith("./") || trimmed.startsWith("../") || trimmed.startsWith("assets/")) {
-			return trimmed;
+			return this.appendCacheBuster(trimmed);
 		}
 
 		const baseUrl = (pkg.url || "").replace(/\/$/, "");
 		if (!baseUrl) return trimmed;
 
-		return `${baseUrl}/${trimmed.replace(/^\/+/, "")}`;
+		return this.appendCacheBuster(`${baseUrl}/${trimmed.replace(/^\/+/, "")}`);
 	}
 
 	getInstanceBackgroundSource(instance) {
@@ -3549,11 +3693,15 @@ ${error.message}`,
 					if (result.success) {
 						await this.instancesSelect();
 					}
-					addInstanceMSG(result.success, code);
+					if (mkLibEnabled) {
+						addInstanceMSG(result.success, code);
+					}
 					addInstancePopup.classList.remove("show");
 					addInstanceInput.value = "";
 				} catch (error) {
-					addInstanceMSG(false, code);
+					if (mkLibEnabled) {
+						addInstanceMSG(false, code);
+					}
 					const popupMessage = new popup();
 					popupMessage.openPopup({
 						title: "Error",
